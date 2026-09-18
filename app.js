@@ -24,13 +24,14 @@ const DEFAULT_SETTINGS = {
     empresa: 'ACOSTA SERVICIOS S.R.L.',
     cuit: '30-71868621-7',
     iva: 'Responsable Inscripto',
-    deposito_principal: 'Depósito central — Sarandí',
+    deposito_principal: 'Base Operativa — Timbúes',
     direccion: 'Estanislao López, Timbúes, Santa Fe',
     email_notificaciones: 'cotizaciones@sgmontajes.com.ar',
     telefono: '(0341) 5890126'
 };
 
 let appData = {
+    filterProveedor: 'todos',
     currentUser: null,
     users: [],
     settings: DEFAULT_SETTINGS,
@@ -109,6 +110,58 @@ window.initContenedoresApp = function() {
             appData.contenedores = JSON.parse(JSON.stringify(window.CONTENEDORES_INITIAL_DB));
             saveData();
         }
+    }
+
+    // Auto-migrar unidades con coordenadas antiguas de Sarandí (-34.6795) a Base Operativa Timbúes (-32.6642) y auto-reparar coordenadas faltantes
+    if (Array.isArray(appData.contenedores)) {
+        let migrados = false;
+        appData.contenedores.forEach(c => {
+            if (c.lat === -34.6795 || (c.estado === 'empresa' && (!c.lat || c.lat < -33.5))) {
+                c.lat = -32.6642 + (Math.random() - 0.5) * 0.004;
+                c.lng = -60.7932 + (Math.random() - 0.5) * 0.004;
+                migrados = true;
+            }
+            if (!c.lat || !c.lng || isNaN(c.lat) || isNaN(c.lng) || (c.lat === 0 && c.lng === 0)) {
+                const fallback = window.obtenerCoordenadasPorUbicacion ? window.obtenerCoordenadasPorUbicacion(c.ubicacion || 'Base Operativa — Timbúes') : { lat: -32.6642, lng: -60.7932 };
+                c.lat = fallback.lat;
+                c.lng = fallback.lng;
+                migrados = true;
+            }
+        });
+
+        // REQUERIMIENTO: Asegurar presencia de unidad C-55 agregada por el usuario
+        const c55Exists = appData.contenedores.some(c => (c.code || '').toUpperCase().replace('-', '') === 'C55');
+        if (!c55Exists) {
+            appData.contenedores.push({
+                code: "C-55",
+                tipo: "Oficina",
+                medida: "20'",
+                estado: "empresa",
+                pago: "al_dia",
+                proveedor: "ACOSTA SERVICIOS SRL",
+                ubicacion: "Base Operativa — Timbúes",
+                lat: -32.6626,
+                lng: -60.7916,
+                entrega: new Date().toISOString().split('T')[0],
+                retiro: "",
+                obsEntrega: "Unidad C-55 dada de alta en Base Timbúes.",
+                obsRetiro: "",
+                tareas: [],
+                historial: [
+                    {
+                        fecha: new Date().toISOString().split('T')[0],
+                        accion: "Alta de unidad",
+                        cliente: "-",
+                        ubicacion: "Base Operativa — Timbúes",
+                        estado: "empresa"
+                    }
+                ]
+            });
+            migrados = true;
+            console.log("Unidad C-55 garantizada en memoria y mapa.");
+        }
+
+        if (migrados) saveData();
     }
 
     console.log(`Contenedores cargados en memoria: ${appData.contenedores ? appData.contenedores.length : 0}`);
@@ -2261,7 +2314,20 @@ function getMetrics() {
     const list = appData.contenedores || [];
     const total = list.length;
     const alquilados = list.filter(x => x.estado === 'alquilado').length;
-    const empresa = list.filter(x => x.estado === 'empresa').length;
+    const enBaseList = list.filter(x => x.estado === 'empresa');
+    const empresa = enBaseList.length;
+    
+    // Conteo por titularidad en Base (Acosta vs SG)
+    let enBaseAcosta = 0;
+    let enBaseSg = 0;
+    enBaseList.forEach(x => {
+        const p = (x.proveedor || '').toUpperCase();
+        if (p.includes('SG') || p.includes('MONTAJES')) {
+            enBaseSg++;
+        } else {
+            enBaseAcosta++;
+        }
+    });
     const reservados = list.filter(x => x.estado === 'reservado').length;
     const reparacion = list.filter(x => x.estado === 'reparacion').length;
     const retrasados = list.filter(x => x.pago === 'retrasado').length;
@@ -2290,6 +2356,8 @@ function getMetrics() {
         total: total, 
         alquilados: alquilados, 
         empresa: empresa, 
+        enBaseAcosta: enBaseAcosta,
+        enBaseSg: enBaseSg,
         reservados: reservados, 
         reparacion: reparacion, 
         retrasados: retrasados, 
@@ -2335,13 +2403,26 @@ function renderDashboard() {
                 <span class="kpi-sub"><span class="pulse-dot pulse-green"></span> ${m.ocupacionPct}% de ocupación activa</span>
             </div>
 
-            <div class="kpi-card kpi-empresa" onclick="filterAndGoFlota('empresa')">
+            <div class="kpi-card kpi-empresa" onclick="abrirModalDisponiblesBase()" title="Click para ver desglose Acosta vs SG Montajes" style="cursor: pointer; position: relative;">
                 <div class="kpi-card-header">
                     <span class="kpi-label">Disponibles en Base</span>
-                    <i class="fas fa-warehouse kpi-card-icon" style="color: #10b981;"></i>
+                    <span style="font-size: 10px; background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; border-radius: 4px; padding: 1px 5px; font-weight: 700;">
+                        Ver Desglose 🔍
+                    </span>
                 </div>
-                <span class="kpi-value" style="color: #10b981;">${m.empresa}</span>
-                <span class="kpi-sub">Listos para entrega inmediata</span>
+                <div style="display: flex; align-items: baseline; gap: 8px;">
+                    <span class="kpi-value" style="color: #10b981;">${m.empresa}</span>
+                    <span style="font-size: 12px; color: #94a3b8; font-weight: bold;">totales</span>
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 6px; font-size: 11px; font-weight: 700;">
+                    <span style="background: rgba(2, 132, 199, 0.25); color: #38bdf8; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.4);">
+                        🔵 Acosta: <strong>${m.enBaseAcosta}</strong>
+                    </span>
+                    <span style="background: rgba(245, 158, 11, 0.25); color: #fbbf24; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.4);">
+                        ⚙️ SG: <strong>${m.enBaseSg}</strong>
+                    </span>
+                </div>
+                <span class="kpi-sub" style="margin-top: 6px;">Tocá acá para ver el detalle</span>
             </div>
 
             <div class="kpi-card kpi-reservado" onclick="filterAndGoFlota('reservado')">
@@ -2605,7 +2686,7 @@ function renderDashboardTable() {
             <td>${renderBadgeEstado(c.estado)}</td>
             <td>${renderBadgePago(c.pago)}</td>
             <td>${c.cliente ? `<strong>${c.cliente}</strong>` : '<span style="color: #64748b;">Acosta Servicios (Base)</span>'}</td>
-            <td>${c.ubicacion || 'Depósito Sarandí'}</td>
+            <td>${c.ubicacion || 'Base Timbúes'}</td>
             <td>${c.retiro ? `<span style="font-family: monospace; font-size: 11.5px;">${c.retiro}</span>` : '<span style="color: #64748b;">-</span>'}</td>
             <td>
                 <div style="display: flex; gap: 4px;">
@@ -2635,6 +2716,15 @@ window.setFilterTipo = function(tipo) {
     renderFlotaTable();
 };
 
+
+window.setFilterProveedor = function(prov) {
+    appData.filterProveedor = prov || 'todos';
+    document.querySelectorAll('.chip-prov').forEach(el => el.classList.remove('active'));
+    const btn = document.getElementById(`chip-prov-${appData.filterProveedor}`);
+    if (btn) btn.classList.add('active');
+    renderFlotaTable();
+};
+
 window.setFilterEstado = function(estado) {
     appData.filterEstado = estado || 'todos';
     document.querySelectorAll('.chip-estado').forEach(el => el.classList.remove('active'));
@@ -2646,6 +2736,10 @@ window.setFilterEstado = function(estado) {
 window.resetFlotaFilters = function() {
     appData.filterTipo = 'todos';
     appData.filterEstado = 'todos';
+    appData.filterProveedor = 'todos';
+    document.querySelectorAll('.chip-prov').forEach(el => el.classList.remove('active'));
+    const btnAllProv = document.getElementById('chip-prov-todos');
+    if (btnAllProv) btnAllProv.classList.add('active');
     appData.searchQuery = '';
     const sInp = document.getElementById('flota-search-input');
     if (sInp) sInp.value = '';
@@ -2724,6 +2818,19 @@ window.renderFlotaTable = function() {
     if (appData.filterPago && appData.filterPago !== 'todos') {
         list = list.filter(x => x.pago === appData.filterPago);
     }
+    if (appData.filterProveedor && appData.filterProveedor !== 'todos') {
+        if (appData.filterProveedor === 'acosta') {
+            list = list.filter(x => {
+                const p = (x.proveedor || '').toUpperCase();
+                return p.includes('ACOSTA') || (!p.includes('SG') && !p.includes('MONTAJES'));
+            });
+        } else if (appData.filterProveedor === 'sg') {
+            list = list.filter(x => {
+                const p = (x.proveedor || '').toUpperCase();
+                return p.includes('SG') || p.includes('MONTAJES');
+            });
+        }
+    }
     if (appData.searchQuery && appData.searchQuery.trim() !== '') {
         const q = appData.searchQuery.toLowerCase();
         list = list.filter(x => 
@@ -2793,8 +2900,13 @@ window.renderFlotaTable = function() {
                     '<span class="badge-pago-ok"><i class="fas fa-check"></i> Al Día</span>'}
             </td>
             <td>
-                <strong>${c.cliente || '<span style="color:#64748b;">(Acosta Servicios - Base)</span>'}</strong>
-                <div style="font-size: 10.5px; color: #94a3b8;">${c.ubicacion || 'Depósito Central Sarandí'}</div>
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+                    ${((c.proveedor || '').toUpperCase().includes('SG') || (c.proveedor || '').toUpperCase().includes('MONTAJES')) 
+                        ? '<span style="font-size: 9.5px; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 3px; padding: 1px 4px; font-weight: bold;">⚙️ SG</span>' 
+                        : '<span style="font-size: 9.5px; background: rgba(2, 132, 199, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 3px; padding: 1px 4px; font-weight: bold;">🔵 Acosta</span>'}
+                    <strong>${c.cliente || '<span style="color:#94a3b8;">(Disponible en Base)</span>'}</strong>
+                </div>
+                <div style="font-size: 10.5px; color: #94a3b8;">${c.ubicacion || 'Base Operativa Timbúes'}</div>
             </td>
             <td>
                 ${tareasCount > 0 ? 
@@ -2804,6 +2916,7 @@ window.renderFlotaTable = function() {
             <td>
                 <div style="display: flex; gap: 4px;">
                     <button class="btn btn-secondary btn-sm" onclick="abrirModalFicha('${c.code}')" title="Ver Ficha Técnica">👁️</button>
+                    <button class="btn btn-secondary btn-sm" onclick="verContenedorEnMapa('${c.code}')" title="Ver en el Mapa" style="color: #38bdf8; border-color: rgba(56,189,248,0.4);"><i class="fas fa-map-marker-alt"></i></button>
                     <button class="btn btn-primary btn-sm" onclick="abrirModalEditarContenedor('${c.code}')" title="Editar / Mover">✏️</button>
                     <button class="btn btn-success btn-sm" onclick="imprimirRemitoPorCodigo('${c.code}', '${c.estado === 'alquilado' ? 'entrega' : 'devolucion'}')" title="Imprimir Remito">📄</button>
                     <button class="btn btn-danger btn-sm" onclick="eliminarContenedor('${c.code}')" title="Dar de baja">🗑️</button>
@@ -2834,6 +2947,18 @@ function updateChipCounts() {
     setChip('chip-count-alquilado', list.filter(x => x.estado === 'alquilado').length);
     setChip('chip-count-reservado', list.filter(x => x.estado === 'reservado').length);
     setChip('chip-count-reparacion', list.filter(x => x.estado === 'reparacion').length);
+    
+    // Conteo para los chips de proveedor
+    const totalAcosta = list.filter(x => {
+        const p = (x.proveedor || '').toUpperCase();
+        return p.includes('ACOSTA') || (!p.includes('SG') && !p.includes('MONTAJES'));
+    }).length;
+    const totalSg = list.filter(x => {
+        const p = (x.proveedor || '').toUpperCase();
+        return p.includes('SG') || p.includes('MONTAJES');
+    }).length;
+    setChip('chip-count-prov-acosta', totalAcosta);
+    setChip('chip-count-prov-sg', totalSg);
 }
 
 window.onSearchInput = function(val) {
@@ -3120,60 +3245,121 @@ function populateMarkers(layerGroup, isMini) {
     if (!layerGroup || typeof L === 'undefined') return;
     layerGroup.clearLayers();
 
-    const sarandiIcon = L.divIcon({
+    const baseIcon = L.divIcon({
         className: 'custom-map-pin',
-        html: '<div style="background: #10b981; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; border: 2px solid #F3B229; box-shadow: 0 4px 10px rgba(0,0,0,0.6);"><i class="fas fa-warehouse"></i></div>',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
+        html: '<div style="background: #10b981; color: white; border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 15px; border: 2.5px solid #F3B229; box-shadow: 0 4px 12px rgba(0,0,0,0.7);"><i class="fa-solid fa-warehouse"></i></div>',
+        iconSize: [34, 34],
+        iconAnchor: [17, 17]
     });
 
-    const mSarandi = getMetrics();
-    L.marker([-34.6795, -58.3312], { icon: sarandiIcon })
+    const mBase = getMetrics();
+    L.marker([-32.6642, -60.7932], { icon: baseIcon, zIndexOffset: 50 })
         .bindPopup(`
-            <div style="font-size: 12.5px; color: #ffffff;">
+            <div style="font-size: 12.5px; color: #ffffff; min-width: 220px;">
                 <div style="font-weight: 800; color: #F3B229; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-warehouse"></i> ACOSTA SERVICIOS — Depósito Timbúes
+                    <i class="fa-solid fa-warehouse"></i> BASE CENTRAL TIMBÚES
                 </div>
-                <div style="color: #94a3b8; font-size: 11.5px; margin-bottom: 6px;">Av. Mitre 3400, Sarandí, Avellaneda</div>
+                <div style="color: #94a3b8; font-size: 11.5px; margin-bottom: 6px;">Ruta Nacional 11 Km 335, Timbúes, Santa Fe</div>
                 <div style="background: rgba(255,255,255,0.08); padding: 6px 8px; border-radius: 4px; font-size: 11px;">
-                    <strong style="color: #10b981;">${mSarandi.empresa}</strong> unidades disponibles en base<br>
-                    <strong style="color: #f43f5e;">${mSarandi.reparacion}</strong> unidades en taller
+                    <strong style="color: #10b981;">${mBase.empresa}</strong> unidades disponibles en base<br>
+                    <span style="color: #fbbf24;">🟡 Acosta: <strong>${mBase.enBaseAcosta || 0}</strong></span> &bull; 
+                    <span style="color: #38bdf8;">🔵 SG: <strong>${mBase.enBaseSg || 0}</strong></span><br>
+                    <strong style="color: #f43f5e;">${mBase.reparacion}</strong> unidades en taller
                 </div>
             </div>
         `)
         .addTo(layerGroup);
 
-    (appData.contenedores || []).forEach(c => {
-        if (c.lat && c.lng && (c.lat !== -34.6795 || c.lng !== -58.3312)) {
-            let pinColor = '#0284c7';
-            let pinIcon = 'fa-hard-hat';
-            if (c.estado === 'reparacion') { pinColor = '#f43f5e'; pinIcon = 'fa-tools'; }
-            else if (c.estado === 'reservado') { pinColor = '#f59e0b'; pinIcon = 'fa-clock'; }
-
-            const icon = L.divIcon({
-                className: 'custom-map-pin',
-                html: `<div style="background: ${pinColor}; color: white; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; border: 2px solid #ffffff; box-shadow: 0 3px 8px rgba(0,0,0,0.5);"><i class="fas ${pinIcon}"></i></div>`,
-                iconSize: [26, 26],
-                iconAnchor: [13, 13]
-            });
-
-            L.marker([c.lat, c.lng], { icon: icon })
-                .bindPopup(`
-                    <div style="font-size: 12px; color: #ffffff; min-width: 180px;">
-                        <div style="font-weight: 800; color: #38bdf8; font-size: 13px; margin-bottom: 4px;">
-                            ${c.code} — ${c.tipo} (${c.medida})
-                        </div>
-                        <div style="margin-bottom: 3px;"><strong>Cliente:</strong> ${c.cliente || 'Acosta Servicios'}</div>
-                        <div style="margin-bottom: 3px; font-size: 11px; color: #94a3b8;"><i class="fas fa-map-marker-alt"></i> ${c.ubicacion || 'Obra'}</div>
-                        <div style="margin-bottom: 6px; font-size: 11px;"><strong>Retiro Prog:</strong> ${c.retiro || '-'}</div>
-                        <div style="display: flex; gap: 4px; margin-top: 6px;">
-                            <button onclick="abrirModalFicha('${c.code}')" style="padding: 3px 8px; background: #38bdf8; color: #0f172a; border: none; border-radius: 4px; font-size: 10.5px; font-weight: bold; cursor: pointer;">👁️ Ficha</button>
-                            <button onclick="imprimirRemitoPorCodigo('${c.code}', 'entrega')" style="padding: 3px 8px; background: #00529F; color: white; border: none; border-radius: 4px; font-size: 10.5px; cursor: pointer;">📄 Remito</button>
-                        </div>
-                    </div>
-                `)
-                .addTo(layerGroup);
+    (appData.contenedores || []).forEach((c, idx) => {
+        // 1. Auto-reparar coordenadas si faltan o son inválidas
+        if (!c.lat || !c.lng || isNaN(c.lat) || isNaN(c.lng) || (c.lat === 0 && c.lng === 0)) {
+            const fallback = window.obtenerCoordenadasPorUbicacion ? window.obtenerCoordenadasPorUbicacion(c.ubicacion || 'Base Operativa — Timbúes') : { lat: -32.6642, lng: -60.7932 };
+            c.lat = fallback.lat;
+            c.lng = fallback.lng;
         }
+
+        let renderLat = Number(c.lat);
+        let renderLng = Number(c.lng);
+
+        // 2. Si las coordenadas caen exactamente en el punto central de la base [-32.6642, -60.7932]
+        // aplicar una dispersión radial elegante (golden angle) para que cada unidad tenga su propio pin visible y no quede tapada por el galpón central
+        if (Math.abs(renderLat - (-32.6642)) < 0.0005 && Math.abs(renderLng - (-60.7932)) < 0.0005) {
+            const angle = ((idx * 137.5) * Math.PI) / 180;
+            const dist = 0.0016 + ((idx % 6) * 0.0005);
+            renderLat = -32.6642 + Math.sin(angle) * dist;
+            renderLng = -60.7932 + Math.cos(angle) * dist;
+        }
+
+        const isSg = ((c.proveedor || '').toUpperCase().includes('SG') || (c.proveedor || '').toUpperCase().includes('MONTAJES'));
+
+        // REGLA VISUAL ESTABLECIDA:
+        // ACOSTA SERVICIOS = Pines Amarillos (#f59e0b), ícono oscuro (#0f172a) para máximo contraste y nitidez
+        // SG MONTAJES = Pines Azules (#0284c7), ícono blanco (#ffffff)
+        const pinColor = isSg ? '#0284c7' : '#f59e0b';
+        const iconColor = isSg ? '#ffffff' : '#0f172a';
+        const provBadge = isSg 
+            ? '<span style="color: #38bdf8; font-weight: bold; background: rgba(2,132,199,0.2); padding: 1px 6px; border-radius: 3px; border: 1px solid rgba(56,189,248,0.4);">🔵 SG Montajes</span>' 
+            : '<span style="color: #fbbf24; font-weight: bold; background: rgba(245,158,11,0.2); padding: 1px 6px; border-radius: 3px; border: 1px solid rgba(245,158,11,0.4);">🟡 Acosta Serv.</span>';
+
+        // Íconos según estado operativo:
+        // Alquilado: Casco (fa-helmet-safety)
+        // Disponible: Caja (fa-box)
+        // Taller: Herramientas (fa-wrench fa-tools)
+        // Reservado: Reloj (fa-clock)
+        let pinIconClass = 'fa-solid fa-helmet-safety fa-hard-hat';
+        let estadoEmoji = '⛑️';
+        let estadoTexto = 'Alquilado en Obra';
+
+        if (c.estado === 'empresa') {
+            pinIconClass = 'fa-solid fa-box';
+            estadoEmoji = '📦';
+            estadoTexto = 'En Base (Disponible)';
+        } else if (c.estado === 'reparacion') {
+            pinIconClass = 'fa-solid fa-wrench fa-tools';
+            estadoEmoji = '🔧';
+            estadoTexto = 'En Taller / Reparación';
+        } else if (c.estado === 'reservado') {
+            pinIconClass = 'fa-solid fa-clock';
+            estadoEmoji = '⏰';
+            estadoTexto = 'Reservado';
+        }
+
+        const icon = L.divIcon({
+            className: 'custom-map-pin',
+            html: `<div title="${c.code} (${c.tipo}): ${estadoEmoji} ${estadoTexto}" style="background: ${pinColor}; color: ${iconColor}; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; border: 2.5px solid #ffffff; box-shadow: 0 3px 8px rgba(0,0,0,0.6);"><i class="${pinIconClass}"></i></div>`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        L.marker([renderLat, renderLng], { icon: icon, zIndexOffset: 200 })
+            .bindPopup(`
+                <div style="font-size: 12px; color: #ffffff; min-width: 200px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-weight: 800; color: #38bdf8; font-size: 14px; font-family: monospace;">${c.code}</span>
+                        <span style="font-size: 10px;">${provBadge}</span>
+                    </div>
+                    <div style="font-weight: 600; margin-bottom: 4px;">${c.tipo} (${c.medida})</div>
+                    <div style="margin-bottom: 3px; font-size: 11.5px;">
+                        <strong>Estado:</strong> <span style="color: ${pinColor}; font-weight: bold;">${estadoEmoji} ${estadoTexto}</span>
+                    </div>
+                    ${c.estado === 'alquilado' ? `
+                        <div style="margin-bottom: 3px;"><strong>Cliente:</strong> ${c.cliente || '-'}</div>
+                        <div style="margin-bottom: 3px; font-size: 11px;"><strong>Retiro Prog:</strong> ${c.retiro || '-'}</div>
+                    ` : ''}
+                    <div style="margin-bottom: 6px; font-size: 11px; color: #94a3b8;">
+                        <i class="fa-solid fa-location-dot"></i> ${c.ubicacion || 'Base Operativa Timbúes'}
+                    </div>
+                    <div style="display: flex; gap: 4px; margin-top: 6px;">
+                        <button onclick="abrirModalFicha('${c.code}')" style="padding: 3px 8px; background: #38bdf8; color: #0f172a; border: none; border-radius: 4px; font-size: 10.5px; font-weight: bold; cursor: pointer;">👁️ Ficha</button>
+                        ${c.estado === 'empresa' ? `
+                            <button onclick="abrirModalAlquiler('${c.code}')" style="padding: 3px 8px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 10.5px; font-weight: bold; cursor: pointer;">🚚 Alquilar</button>
+                        ` : `
+                            <button onclick="imprimirRemitoPorCodigo('${c.code}', 'entrega')" style="padding: 3px 8px; background: #00529F; color: white; border: none; border-radius: 4px; font-size: 10.5px; cursor: pointer;">📄 Remito</button>
+                        `}
+                    </div>
+                </div>
+            `)
+            .addTo(layerGroup);
     });
 }
 
@@ -3183,7 +3369,7 @@ function initDashboardMap() {
 
     try {
         if (!appData.dashMapInstance) {
-            appData.dashMapInstance = L.map('dashboard-map-container', { scrollWheelZoom: false }).setView([-34.6795, -58.3312], 9);
+            appData.dashMapInstance = L.map('dashboard-map-container', { scrollWheelZoom: false }).setView([-32.6642, -60.7932], 9);
             
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
@@ -3207,7 +3393,7 @@ function initMap() {
 
     try {
         if (!appData.mapInstance) {
-            appData.mapInstance = L.map('map-container').setView([-34.6795, -58.3312], 9);
+            appData.mapInstance = L.map('map-container').setView([-32.6642, -60.7932], 9);
             
             const streetLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
@@ -3243,9 +3429,9 @@ function initMap() {
     }
 }
 
-window.centrarMapaEnSarandi = function() {
+window.centrarMapaEnBase = function() {
     if (appData.mapInstance) {
-        appData.mapInstance.setView([-34.6795, -58.3312], 13);
+        appData.mapInstance.setView([-32.6642, -60.7932], 13);
     }
 };
 
@@ -3253,13 +3439,191 @@ window.ajustarZoomTodaFlota = function() {
     if (appData.mapInstance && appData.markersGroup) {
         const bounds = [];
         (appData.contenedores || []).forEach(c => {
-            if (c.lat && c.lng) bounds.push([c.lat, c.lng]);
+            if (c.lat && c.lng && !isNaN(c.lat) && !isNaN(c.lng)) bounds.push([c.lat, c.lng]);
         });
-        bounds.push([-34.6795, -58.3312]);
+        bounds.push([-32.6642, -60.7932]);
         if (bounds.length > 0) {
-            appData.mapInstance.fitBounds(bounds, { padding: [30, 30] });
+            appData.mapInstance.fitBounds(bounds, { padding: [35, 35] });
         }
     }
+};
+
+// Selector de Ubicación en Mini Mapa del Modal Alta/Edición
+appData.formMapInstance = null;
+appData.formMapMarker = null;
+
+window.updateFormPinColor = function() {
+    const provEl = document.getElementById('form-cont-proveedor');
+    const isSg = provEl && ((provEl.value || '').toUpperCase().includes('SG') || (provEl.value || '').toUpperCase().includes('MONTAJES'));
+    const pinColor = isSg ? '#0284c7' : '#f59e0b';
+    const iconColor = isSg ? '#ffffff' : '#0f172a';
+    if (appData.formMapMarker && typeof L !== 'undefined') {
+        appData.formMapMarker.setIcon(L.divIcon({
+            className: 'custom-map-pin',
+            html: `<div style="background: ${pinColor}; color: ${iconColor}; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2.5px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.6);"><i class="fa-solid fa-box"></i></div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+        }));
+    }
+};
+
+window.initFormMap = function(lat, lng) {
+    lat = parseFloat(lat);
+    lng = parseFloat(lng);
+    if (isNaN(lat)) lat = -32.6642;
+    if (isNaN(lng)) lng = -60.7932;
+
+    const latEl = document.getElementById('form-cont-lat');
+    const lngEl = document.getElementById('form-cont-lng');
+    const badgeEl = document.getElementById('form-cont-coords-badge');
+    if (latEl) latEl.value = lat.toFixed(6);
+    if (lngEl) lngEl.value = lng.toFixed(6);
+    if (badgeEl) badgeEl.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
+    const mapContainer = document.getElementById('form-cont-map');
+    if (!mapContainer || typeof L === 'undefined') return;
+
+    const provEl = document.getElementById('form-cont-proveedor');
+    const isSg = provEl && ((provEl.value || '').toUpperCase().includes('SG') || (provEl.value || '').toUpperCase().includes('MONTAJES'));
+    const pinColor = isSg ? '#0284c7' : '#f59e0b';
+    const iconColor = isSg ? '#ffffff' : '#0f172a';
+
+    const getFormPinIcon = (color, iColor) => L.divIcon({
+        className: 'custom-map-pin',
+        html: `<div style="background: ${color}; color: ${iColor}; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2.5px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.6);"><i class="fa-solid fa-box"></i></div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+    });
+
+    setTimeout(function() {
+        if (!appData.formMapInstance) {
+            appData.formMapInstance = L.map('form-cont-map', {
+                zoomControl: true,
+                scrollWheelZoom: true
+            }).setView([lat, lng], 13);
+
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Tiles &copy; Esri'
+            }).addTo(appData.formMapInstance);
+
+            appData.formMapMarker = L.marker([lat, lng], { draggable: true, icon: getFormPinIcon(pinColor, iconColor) }).addTo(appData.formMapInstance);
+
+            const syncCoords = function(newLat, newLng) {
+                if (latEl) latEl.value = newLat.toFixed(6);
+                if (lngEl) lngEl.value = newLng.toFixed(6);
+                if (badgeEl) badgeEl.textContent = `${newLat.toFixed(4)}, ${newLng.toFixed(4)}`;
+            };
+
+            appData.formMapMarker.on('dragend', function(e) {
+                const p = e.target.getLatLng();
+                syncCoords(p.lat, p.lng);
+            });
+
+            appData.formMapInstance.on('click', function(e) {
+                appData.formMapMarker.setLatLng(e.latlng);
+                syncCoords(e.latlng.lat, e.latlng.lng);
+            });
+        } else {
+            appData.formMapInstance.setView([lat, lng], 13);
+            if (appData.formMapMarker) {
+                appData.formMapMarker.setLatLng([lat, lng]);
+                appData.formMapMarker.setIcon(getFormPinIcon(pinColor, iconColor));
+            }
+        }
+        appData.formMapInstance.invalidateSize();
+    }, 120);
+};
+
+window.buscarUbicacionEnModalMapa = function() {
+    const input = document.getElementById('form-cont-ubicacion');
+    if (!input || !input.value.trim()) return;
+    const query = input.value.trim();
+
+    const applyCoords = function(lat, lng) {
+        if (appData.formMapInstance) {
+            appData.formMapInstance.setView([lat, lng], 14);
+            if (appData.formMapMarker) appData.formMapMarker.setLatLng([lat, lng]);
+        }
+        const latEl = document.getElementById('form-cont-lat');
+        const lngEl = document.getElementById('form-cont-lng');
+        const badgeEl = document.getElementById('form-cont-coords-badge');
+        if (latEl) latEl.value = lat.toFixed(6);
+        if (lngEl) lngEl.value = lng.toFixed(6);
+        if (badgeEl) badgeEl.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        showToast(`📍 Ubicación fijada en el mapa: ${query}`, "info");
+    };
+
+    const localCoords = window.obtenerCoordenadasPorUbicacion(query);
+    const qLower = query.toLowerCase();
+
+    const isSpecific = qLower.includes('san lorenzo') || qLower.includes('puerto') || qLower.includes('rosario') || 
+                       qLower.includes('cargill') || qLower.includes('dreyfus') || qLower.includes('bunge') || 
+                       qLower.includes('renova') || qLower.includes('cofco') || qLower.includes('timbues') || 
+                       qLower.includes('quilmes') || qLower.includes('lujan') || qLower.includes('canuelas') ||
+                       qLower.includes('vgg') || qLower.includes('pilar') || qLower.includes('escobar') ||
+                       qLower.includes('base');
+
+    if (isSpecific) {
+        applyCoords(localCoords.lat, localCoords.lng);
+        return;
+    }
+
+    // Geocodificación online con OpenStreetMap Nominatim
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=ar&limit=1&q=${encodeURIComponent(query)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data && data.length > 0) {
+                applyCoords(parseFloat(data[0].lat), parseFloat(data[0].lon));
+            } else {
+                applyCoords(localCoords.lat, localCoords.lng);
+            }
+        })
+        .catch(() => {
+            applyCoords(localCoords.lat, localCoords.lng);
+        });
+};
+
+window.verContenedorEnMapa = function(code) {
+    if (!code) return;
+    const cleanCode = (code || '').toUpperCase().trim();
+    const c = (appData.contenedores || []).find(x => 
+        (x.code || '').toUpperCase().trim() === cleanCode || 
+        (x.code || '').toUpperCase().replace('-', '') === cleanCode.replace('-', '')
+    );
+    
+    if (!c) {
+        showToast(`El contenedor ${code} no fue encontrado en la flota.`, "warning");
+        return;
+    }
+
+    // Auto-reparar coordenadas si faltaban
+    if (!c.lat || !c.lng || isNaN(c.lat) || isNaN(c.lng) || (c.lat === 0 && c.lng === 0)) {
+        const fallback = window.obtenerCoordenadasPorUbicacion ? window.obtenerCoordenadasPorUbicacion(c.ubicacion || 'Base Operativa — Timbúes') : { lat: -32.6625, lng: -60.7915 };
+        c.lat = fallback.lat;
+        c.lng = fallback.lng;
+        saveData();
+    }
+
+    cerrarModales();
+    switchView('mapa');
+
+    setTimeout(function() {
+        if (appData.markersGroup) populateMarkers(appData.markersGroup, false);
+        if (appData.mapInstance) {
+            appData.mapInstance.flyTo([c.lat, c.lng], 15, { animate: true, duration: 0.8 });
+            setTimeout(function() {
+                if (appData.markersGroup) {
+                    appData.markersGroup.eachLayer(function(layer) {
+                        const p = layer.getLatLng ? layer.getLatLng() : null;
+                        if (p && Math.abs(p.lat - c.lat) < 0.004 && Math.abs(p.lng - c.lng) < 0.004) {
+                            layer.openPopup();
+                        }
+                    });
+                }
+            }, 850);
+        }
+    }, 250);
 };
 
 // Modales CRUD Contenedor
@@ -3267,19 +3631,25 @@ window.abrirModalNuevoContenedor = function() {
     const modal = document.getElementById('modal-contenedor-form');
     if (!modal) return;
     
-    document.getElementById('modal-form-title').innerHTML = '<i class="fas fa-plus-circle"></i> Alta de Nuevo Contenedor';
+    document.getElementById('modal-form-title').innerHTML = '<i class="fas fa-box" style="color: var(--warning);"></i> Alta de Nuevo Contenedor';
     document.getElementById('form-cont-code').value = `C-${100 + (appData.contenedores ? appData.contenedores.length : 0) + 1}`;
     document.getElementById('form-cont-tipo').value = 'Oficina';
     document.getElementById('form-cont-medida').value = "20'";
-    document.getElementById('form-cont-estado').value = 'empresa';
-    document.getElementById('form-cont-pago').value = 'al_dia';
-    document.getElementById('form-cont-cliente').value = '';
-    document.getElementById('form-cont-ubicacion').value = appData.settings.deposito_principal || 'Depósito central — Sarandí';
-    document.getElementById('form-cont-entrega').value = '';
-    document.getElementById('form-cont-retiro').value = '';
-    document.getElementById('form-cont-obs').value = '';
     
+    const provEl = document.getElementById('form-cont-proveedor');
+    if (provEl) provEl.value = 'ACOSTA SERVICIOS SRL';
+    
+    const estadoEl = document.getElementById('form-cont-estado');
+    if (estadoEl) estadoEl.value = 'empresa';
+    
+    const ubiEl = document.getElementById('form-cont-ubicacion');
+    if (ubiEl) ubiEl.value = 'Base Operativa — Timbúes';
+    
+    const obsEl = document.getElementById('form-cont-obs');
+    if (obsEl) obsEl.value = '';
+
     modal.style.display = 'flex';
+    window.initFormMap(-32.6642, -60.7932);
 };
 
 window.abrirModalEditarContenedor = function(code) {
@@ -3289,19 +3659,41 @@ window.abrirModalEditarContenedor = function(code) {
     const modal = document.getElementById('modal-contenedor-form');
     if (!modal) return;
 
-    document.getElementById('modal-form-title').innerHTML = `<i class="fas fa-edit"></i> Modificar Contenedor ${cont.code}`;
+    document.getElementById('modal-form-title').innerHTML = `<i class="fas fa-edit" style="color: var(--warning);"></i> Modificar Contenedor ${cont.code}`;
     document.getElementById('form-cont-code').value = cont.code;
     document.getElementById('form-cont-tipo').value = cont.tipo;
     document.getElementById('form-cont-medida').value = cont.medida;
-    document.getElementById('form-cont-estado').value = cont.estado;
-    document.getElementById('form-cont-pago').value = cont.pago || 'al_dia';
-    document.getElementById('form-cont-cliente').value = cont.cliente || '';
-    document.getElementById('form-cont-ubicacion').value = cont.ubicacion || '';
-    document.getElementById('form-cont-entrega').value = cont.entrega || '';
-    document.getElementById('form-cont-retiro').value = cont.retiro || '';
-    document.getElementById('form-cont-obs').value = cont.obsEntrega || '';
+    
+    const provEl = document.getElementById('form-cont-proveedor');
+    if (provEl) provEl.value = cont.proveedor || 'ACOSTA SERVICIOS SRL';
+
+    const estadoEl = document.getElementById('form-cont-estado');
+    if (estadoEl) {
+        if (!['empresa', 'reparacion'].includes(cont.estado)) {
+            estadoEl.innerHTML = `
+                <option value="empresa">En Base (Disponible)</option>
+                <option value="reparacion">En Taller / Mantenimiento</option>
+                <option value="${cont.estado}" selected>${cont.estado.toUpperCase()}</option>
+            `;
+        } else {
+            estadoEl.innerHTML = `
+                <option value="empresa" ${cont.estado === 'empresa' ? 'selected' : ''}>En Base (Disponible)</option>
+                <option value="reparacion" ${cont.estado === 'reparacion' ? 'selected' : ''}>En Taller / Mantenimiento</option>
+            `;
+        }
+        estadoEl.value = cont.estado;
+    }
+
+    const ubiEl = document.getElementById('form-cont-ubicacion');
+    if (ubiEl) ubiEl.value = cont.ubicacion || 'Base Operativa — Timbúes';
+    
+    const obsEl = document.getElementById('form-cont-obs');
+    if (obsEl) obsEl.value = cont.obsEntrega || cont.observaciones || '';
 
     modal.style.display = 'flex';
+    const initLat = (cont.lat && !isNaN(cont.lat)) ? cont.lat : -32.6642;
+    const initLng = (cont.lng && !isNaN(cont.lng)) ? cont.lng : -60.7932;
+    window.initFormMap(initLat, initLng);
 };
 
 window.guardarContenedorForm = function(e) {
@@ -3312,7 +3704,11 @@ window.guardarContenedorForm = function(e) {
         return;
     }
 
-    let cont = appData.contenedores.find(x => x.code === code);
+    const cleanCode = code.toUpperCase();
+    let cont = (appData.contenedores || []).find(x => 
+        (x.code || '').toUpperCase() === cleanCode || 
+        (x.code || '').toUpperCase().replace('-', '') === cleanCode.replace('-', '')
+    );
     const isNew = !cont;
 
     if (isNew) {
@@ -3320,15 +3716,39 @@ window.guardarContenedorForm = function(e) {
         appData.contenedores.push(cont);
     }
 
+    cont.code = code; // Normalizar código
     cont.tipo = document.getElementById('form-cont-tipo').value;
     cont.medida = document.getElementById('form-cont-medida').value;
     cont.estado = document.getElementById('form-cont-estado').value;
-    cont.pago = document.getElementById('form-cont-pago').value;
-    cont.cliente = document.getElementById('form-cont-cliente').value.trim();
-    cont.ubicacion = document.getElementById('form-cont-ubicacion').value.trim();
-    cont.entrega = document.getElementById('form-cont-entrega').value;
-    cont.retiro = document.getElementById('form-cont-retiro').value;
-    cont.obsEntrega = document.getElementById('form-cont-obs').value.trim();
+    
+    const provEl = document.getElementById('form-cont-proveedor');
+    if (provEl) cont.proveedor = provEl.value;
+    
+    const ubiEl = document.getElementById('form-cont-ubicacion');
+    cont.ubicacion = ubiEl ? ubiEl.value.trim() : (appData.settings.deposito_principal || 'Base Operativa — Timbúes');
+    
+    const obsEl = document.getElementById('form-cont-obs');
+    cont.obsEntrega = obsEl ? obsEl.value.trim() : '';
+    cont.observaciones = cont.obsEntrega;
+
+    // Obtener coordenadas desde el selector en mini mapa
+    const latInp = document.getElementById('form-cont-lat');
+    const lngInp = document.getElementById('form-cont-lng');
+    let lat = latInp ? parseFloat(latInp.value) : NaN;
+    let lng = lngInp ? parseFloat(lngInp.value) : NaN;
+
+    // Si no se movió el pin pero se ingresó una obra/localidad distinta a base, resolver coordenadas inteligentemente
+    const ubiLower = (cont.ubicacion || '').toLowerCase();
+    const isBase = ubiLower.includes('timbues') || ubiLower.includes('timbúes') || ubiLower.includes('base') || ubiLower === '';
+    
+    if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0) || (!isBase && Math.abs(lat - (-32.6642)) < 0.0001 && Math.abs(lng - (-60.7932)) < 0.0001)) {
+        const coords = window.obtenerCoordenadasPorUbicacion(cont.ubicacion);
+        lat = coords.lat;
+        lng = coords.lng;
+    }
+
+    cont.lat = lat;
+    cont.lng = lng;
 
     saveData();
     cerrarModales();
@@ -3336,12 +3756,17 @@ window.guardarContenedorForm = function(e) {
     renderDashboard();
     renderFlotaTable();
     renderAlquileresTable();
-    showToast(`✓ Contenedor ${code} guardado con éxito.`, "success");
+
+    // Actualizar marcadores geográficos inmediatamente en ambos mapas
+    if (appData.markersGroup) populateMarkers(appData.markersGroup, false);
+    if (appData.dashMarkersGroup) populateMarkers(appData.dashMarkersGroup, true);
+
+    showToast(`✓ Contenedor ${code} guardado con éxito. Ubicado en el mapa.`, "success");
 
     try {
-        logOperationalEvent(isNew ? 'alta' : 'alta', `${isNew ? 'Alta de nuevo' : 'Actualización de'} contenedor ${code} (${cont.tipo} ${cont.medida})`, code);
+        logOperationalEvent(isNew ? 'alta' : 'modificacion', `${isNew ? 'Alta de nuevo' : 'Actualización de'} contenedor ${code} (${cont.tipo} ${cont.medida}, prov: ${cont.proveedor}) en "${cont.ubicacion}"`, code);
         sendLiveSignal({ type: 'DATA_UPDATE' });
-    } catch(e) {}
+    } catch(err) {}
 };
 
 window.abrirModalFicha = function(code) {
@@ -3367,11 +3792,11 @@ window.abrirModalFicha = function(code) {
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; font-size: 12px;">
             <div class="glass-card">
                 <span style="color: #94a3b8; font-size: 11px;">Cliente Asignado</span><br>
-                <strong style="font-size: 13px; color: #ffffff;">${c.cliente || 'SG Montajes (En Base)'}</strong>
+                <strong style="font-size: 13px; color: #ffffff;">${c.cliente || ((c.proveedor || '').toUpperCase().includes('SG') ? 'SG Montajes (Disponible en Base)' : 'Acosta Servicios (Disponible en Base)')}</strong>
             </div>
             <div class="glass-card">
                 <span style="color: #94a3b8; font-size: 11px;">Ubicación / Obra</span><br>
-                <strong style="font-size: 13px; color: #ffffff;">${c.ubicacion || 'Depósito central — Sarandí'}</strong>
+                <strong style="font-size: 13px; color: #ffffff;">${c.ubicacion || 'Base Operativa — Timbúes'}</strong>
             </div>
             <div class="glass-card">
                 <span style="color: #94a3b8; font-size: 11px;">Fecha de Entrega</span><br>
@@ -3418,6 +3843,7 @@ window.abrirModalFicha = function(code) {
 
         <div style="display: flex; justify-content: flex-end; gap: 8px;">
             <button class="btn btn-secondary" onclick="cerrarModales()">Cerrar</button>
+            <button class="btn btn-secondary" onclick="verContenedorEnMapa('${c.code}')" style="color: #38bdf8; border-color: rgba(56,189,248,0.4);"><i class="fas fa-map-marked-alt"></i> Ver en Mapa</button>
             <button class="btn btn-primary" onclick="abrirModalEditarContenedor('${c.code}')">Editar Datos</button>
             <button class="btn btn-success" onclick="imprimirRemitoPorCodigo('${c.code}', 'entrega')">📄 Generar Remito</button>
         </div>
@@ -3469,21 +3895,26 @@ window.abrirModalDevolucion = function(code) {
     const c = appData.contenedores.find(x => x.code === code);
     if (!c) return;
 
-    if (confirm(`¿Confirma el retiro y recepción del contenedor ${c.code} de la obra ${c.ubicacion || ''} hacia el Depósito Central Sarandí?`)) {
+    if (confirm(`¿Confirma el retiro y recepción del contenedor ${c.code} de la obra ${c.ubicacion || ''} hacia el Base Operativa Timbúes?`)) {
         const obraAnterior = c.ubicacion || '';
         const clienteAnterior = c.cliente || '';
         c.estado = 'empresa';
         c.cliente = '';
-        c.ubicacion = appData.settings.deposito_principal || 'Depósito central — Sarandí';
-        c.lat = -34.6795;
-        c.lng = -58.3312;
+        c.ubicacion = appData.settings.deposito_principal || 'Base Operativa — Timbúes';
+        const baseCoords = window.obtenerCoordenadasPorUbicacion ? window.obtenerCoordenadasPorUbicacion(c.ubicacion) : { lat: -32.6642, lng: -60.7932 };
+        c.lat = baseCoords.lat;
+        c.lng = baseCoords.lng;
         c.retiro = '';
         saveData();
         renderHeaderStats();
         renderDashboard();
         renderFlotaTable();
         renderAlquileresTable();
-        showToast(`✓ Contenedor ${c.code} ingresado nuevamente a Base Sarandí.`, "success");
+
+        if (appData.markersGroup) populateMarkers(appData.markersGroup, false);
+        if (appData.dashMarkersGroup) populateMarkers(appData.dashMarkersGroup, true);
+
+        showToast(`✓ Contenedor ${c.code} ingresado nuevamente a Base Timbúes.`, "success");
 
         try {
             logOperationalEvent('devolucion', `Devolución y recepción en base de ${c.code} (retirado de "${obraAnterior}", cliente: "${clienteAnterior}")`, code);
@@ -3656,12 +4087,150 @@ window.abrirModalAlquiler = function(preselectedCode) {
         if (montoEl) montoEl.value = c.monto || '$ 250.000';
         if (pagoEl) pagoEl.value = c.pago || 'al_dia';
         if (obsEl) obsEl.value = c.observaciones || '';
+        const provEl = document.getElementById('alquiler-form-proveedor');
+        if (provEl) {
+            provEl.value = c.proveedor || 'ACOSTA SERVICIOS SRL';
+            window.onProveedorAlquilerChange(provEl.value);
+        }
     } else {
         if (entregaEl) entregaEl.value = hoyStr;
         if (retiroEl) retiroEl.value = unMesStr;
+        const provEl = document.getElementById('alquiler-form-proveedor');
+        if (provEl) {
+            provEl.value = 'ACOSTA SERVICIOS SRL';
+            window.onProveedorAlquilerChange(provEl.value);
+        }
     }
 
     modal.style.display = 'flex';
+    const initLat = (c && c.lat && !isNaN(c.lat)) ? c.lat : -32.6642;
+    const initLng = (c && c.lng && !isNaN(c.lng)) ? c.lng : -60.7932;
+    const provVal = (c && c.proveedor) ? c.proveedor : (document.getElementById('alquiler-form-proveedor') ? document.getElementById('alquiler-form-proveedor').value : 'ACOSTA SERVICIOS SRL');
+    window.initAlquilerMap(initLat, initLng, provVal);
+};
+
+// Selector de Ubicación en Mini Mapa del Modal de Alquiler
+appData.alquilerMapInstance = null;
+appData.alquilerMapMarker = null;
+
+window.initAlquilerMap = function(lat, lng, provider) {
+    lat = parseFloat(lat);
+    lng = parseFloat(lng);
+    if (isNaN(lat)) lat = -32.6642;
+    if (isNaN(lng)) lng = -60.7932;
+
+    const latEl = document.getElementById('alquiler-form-lat');
+    const lngEl = document.getElementById('alquiler-form-lng');
+    const badgeEl = document.getElementById('alquiler-form-coords-badge');
+    if (latEl) latEl.value = lat.toFixed(6);
+    if (lngEl) lngEl.value = lng.toFixed(6);
+    if (badgeEl) badgeEl.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
+    const mapContainer = document.getElementById('alquiler-form-map');
+    if (!mapContainer || typeof L === 'undefined') return;
+
+    const isSg = ((provider || '').toUpperCase().includes('SG') || (provider || '').toUpperCase().includes('MONTAJES'));
+    // REGLA: Acosta = Amarillo (#f59e0b), SG = Azul (#0284c7)
+    const pinColor = isSg ? '#0284c7' : '#f59e0b';
+
+    const getPinIcon = (color) => {
+        const isYellow = (color === '#f59e0b');
+        const iconColor = isYellow ? '#0f172a' : '#ffffff';
+        return L.divIcon({
+            className: 'custom-map-pin',
+            html: `<div style="background: ${color}; color: ${iconColor}; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 12px; border: 2.5px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.6);"><i class="fa-solid fa-helmet-safety fa-hard-hat"></i></div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+        });
+    };
+
+    setTimeout(function() {
+        if (!appData.alquilerMapInstance) {
+            appData.alquilerMapInstance = L.map('alquiler-form-map', {
+                zoomControl: true,
+                scrollWheelZoom: true
+            }).setView([lat, lng], 13);
+
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Tiles &copy; Esri'
+            }).addTo(appData.alquilerMapInstance);
+
+            appData.alquilerMapMarker = L.marker([lat, lng], { draggable: true, icon: getPinIcon(pinColor) }).addTo(appData.alquilerMapInstance);
+
+            const syncCoords = function(newLat, newLng) {
+                if (latEl) latEl.value = newLat.toFixed(6);
+                if (lngEl) lngEl.value = newLng.toFixed(6);
+                if (badgeEl) badgeEl.textContent = `${newLat.toFixed(4)}, ${newLng.toFixed(4)}`;
+            };
+
+            appData.alquilerMapMarker.on('dragend', function(e) {
+                const p = e.target.getLatLng();
+                syncCoords(p.lat, p.lng);
+            });
+
+            appData.alquilerMapInstance.on('click', function(e) {
+                appData.alquilerMapMarker.setLatLng(e.latlng);
+                syncCoords(e.latlng.lat, e.latlng.lng);
+            });
+        } else {
+            appData.alquilerMapInstance.setView([lat, lng], 13);
+            if (appData.alquilerMapMarker) {
+                appData.alquilerMapMarker.setLatLng([lat, lng]);
+                appData.alquilerMapMarker.setIcon(getPinIcon(pinColor));
+            }
+        }
+        appData.alquilerMapInstance.invalidateSize();
+    }, 120);
+};
+
+window.buscarUbicacionEnModalAlquiler = function() {
+    const input = document.getElementById('alquiler-form-ubicacion');
+    if (!input || !input.value.trim()) return;
+    const query = input.value.trim();
+
+    const applyCoords = function(lat, lng) {
+        if (appData.alquilerMapInstance) {
+            appData.alquilerMapInstance.setView([lat, lng], 14);
+            if (appData.alquilerMapMarker) appData.alquilerMapMarker.setLatLng([lat, lng]);
+        }
+        const latEl = document.getElementById('alquiler-form-lat');
+        const lngEl = document.getElementById('alquiler-form-lng');
+        const badgeEl = document.getElementById('alquiler-form-coords-badge');
+        if (latEl) latEl.value = lat.toFixed(6);
+        if (lngEl) lngEl.value = lng.toFixed(6);
+        if (badgeEl) badgeEl.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        showToast(`📍 Ubicación de obra fijada: ${query}`, "info");
+    };
+
+    const localCoords = window.obtenerCoordenadasPorUbicacion(query);
+    const qLower = query.toLowerCase();
+
+    const isSpecific = qLower.includes('san lorenzo') || qLower.includes('puerto') || qLower.includes('rosario') || 
+                       qLower.includes('cargill') || qLower.includes('dreyfus') || qLower.includes('bunge') || 
+                       qLower.includes('renova') || qLower.includes('cofco') || qLower.includes('timbues') || 
+                       qLower.includes('quilmes') || qLower.includes('lujan') || qLower.includes('canuelas') || 
+                       qLower.includes('vgg') || qLower.includes('pilar') || qLower.includes('escobar') || 
+                       qLower.includes('base') || qLower.includes('campana') || qLower.includes('zarate');
+
+    if (isSpecific) {
+        applyCoords(localCoords.lat, localCoords.lng);
+        return;
+    }
+
+    // Geocodificación online con Nominatim OSM
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=ar&limit=1&q=${encodeURIComponent(query)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data && data.length > 0) {
+                applyCoords(parseFloat(data[0].lat), parseFloat(data[0].lon));
+            } else {
+                applyCoords(localCoords.lat, localCoords.lng);
+            }
+        })
+        .catch(() => {
+            applyCoords(localCoords.lat, localCoords.lng);
+        });
 };
 
 window.onAlquilerSelectContainer = function(code) {
@@ -3675,6 +4244,14 @@ window.onAlquilerSelectContainer = function(code) {
             if (clienteEl && !clienteEl.value) clienteEl.value = c.cliente || '';
             if (ubicacionEl && !ubicacionEl.value) ubicacionEl.value = c.ubicacion || '';
         }
+        const provEl = document.getElementById('alquiler-form-proveedor');
+        if (provEl) {
+            provEl.value = c.proveedor || 'ACOSTA SERVICIOS SRL';
+            window.onProveedorAlquilerChange(provEl.value);
+        }
+        const curLat = (c.lat && !isNaN(c.lat)) ? c.lat : -32.6642;
+        const curLng = (c.lng && !isNaN(c.lng)) ? c.lng : -60.7932;
+        window.initAlquilerMap(curLat, curLng, c.proveedor || (provEl ? provEl.value : 'ACOSTA SERVICIOS SRL'));
     }
 };
 
@@ -3710,6 +4287,23 @@ window.guardarAlquilerForm = function(e, emitirRemito) {
     c.monto = montoEl ? montoEl.value.trim() : '';
     c.pago = pagoEl ? pagoEl.value : 'al_dia';
     c.observaciones = obsEl ? obsEl.value.trim() : '';
+    const provEl = document.getElementById('alquiler-form-proveedor');
+    c.proveedor = provEl ? provEl.value : 'ACOSTA SERVICIOS SRL';
+
+    // Obtener coordenadas desde el mini mapa interactivo o resolvedor
+    const latInp = document.getElementById('alquiler-form-lat');
+    const lngInp = document.getElementById('alquiler-form-lng');
+    let lat = latInp ? parseFloat(latInp.value) : NaN;
+    let lng = lngInp ? parseFloat(lngInp.value) : NaN;
+
+    if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) {
+        const coords = window.obtenerCoordenadasPorUbicacion(c.ubicacion);
+        lat = coords.lat;
+        lng = coords.lng;
+    }
+
+    c.lat = lat;
+    c.lng = lng;
 
     saveData();
     cerrarModales();
@@ -3719,7 +4313,11 @@ window.guardarAlquilerForm = function(e, emitirRemito) {
     try { renderFlotaTable(); } catch(err) {}
     try { renderAlquileresTable(); } catch(err) {}
 
-    showToast('✓ Contenedor ' + c.code + ' asignado a "' + c.cliente + '" con éxito.', "success");
+    // Actualizar pines del mapa en vivo inmediatamente
+    if (appData.markersGroup) populateMarkers(appData.markersGroup, false);
+    if (appData.dashMarkersGroup) populateMarkers(appData.dashMarkersGroup, true);
+
+    showToast(`✓ Contenedor ${c.code} asignado a "${c.cliente}" con éxito. Ubicado en el mapa.`, "success");
 
     try {
         logOperationalEvent('alquiler', `Alquiler de contenedor ${c.code} (${c.tipo}) a "${c.cliente}" en "${c.ubicacion || 'Sin especificar'}" hasta ${c.retiro || 'indefinido'}`, c.code);
@@ -3744,3 +4342,190 @@ if (document.readyState === 'loading') {
 } else {
     window.initContenedoresApp();
 }
+
+// =========================================================
+// GESTIÓN DE PROVEEDOR EMISOR (ACOSTA SERVICIOS vs SG MONTAJES) & ATAJO F6
+// =========================================================
+
+window.toggleProveedorAlquiler = function() {
+    const provEl = document.getElementById('alquiler-form-proveedor');
+    if (!provEl) return;
+    if (provEl.value === 'ACOSTA SERVICIOS SRL') {
+        provEl.value = 'SG MONTAJES SRL';
+    } else {
+        provEl.value = 'ACOSTA SERVICIOS SRL';
+    }
+    window.onProveedorAlquilerChange(provEl.value);
+    showToast(`Proveedor cambiado a: ${provEl.value}`, 'info');
+};
+
+window.onProveedorAlquilerChange = function(val) {
+    const badgeEl = document.getElementById('alquiler-proveedor-badge-preview');
+    if (!badgeEl) return;
+    const isAcosta = (val || '').toUpperCase().includes('ACOSTA');
+    if (isAcosta) {
+        badgeEl.style.background = 'rgba(245, 158, 11, 0.2)';
+        badgeEl.style.borderColor = '#f59e0b';
+        badgeEl.style.color = '#fbbf24';
+        badgeEl.innerHTML = '🟡 ACOSTA SERVICIOS SRL (Timbúes)';
+    } else {
+        badgeEl.style.background = 'rgba(2, 132, 199, 0.2)';
+        badgeEl.style.borderColor = '#38bdf8';
+        badgeEl.style.color = '#38bdf8';
+        badgeEl.innerHTML = '🔵 SG MONTAJES SRL (Timbúes)';
+    }
+    // Sincronizar color del pin en el mapa interactivo de alquiler si está abierto
+    if (appData.alquilerMapMarker && typeof L !== 'undefined') {
+        const pinColor = isAcosta ? '#f59e0b' : '#0284c7';
+        const iconColor = isAcosta ? '#0f172a' : '#ffffff';
+        appData.alquilerMapMarker.setIcon(L.divIcon({
+            className: 'custom-map-pin',
+            html: `<div style="background: ${pinColor}; color: ${iconColor}; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 12px; border: 2.5px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.6);"><i class="fa-solid fa-helmet-safety fa-hard-hat"></i></div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+        }));
+    }
+};
+
+// Escuchar la tecla F6 globalmente
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'F6' || event.keyCode === 117) {
+        const modalAlquiler = document.getElementById('modal-alquiler');
+        if (modalAlquiler && modalAlquiler.style.display !== 'none') {
+            event.preventDefault();
+            event.stopPropagation();
+            window.toggleProveedorAlquiler();
+        }
+    }
+});
+
+
+// Geocodificador de Ubicación a Coordenadas (Timbúes, Cordón Industrial, Santa Fe, Argentina)
+window.obtenerCoordenadasPorUbicacion = function(texto) {
+    const t = (texto || '').toLowerCase().trim();
+    if (!t || t.includes('timbues') || t.includes('timbúes') || t.includes('base') || t.includes('deposito') || t.includes('depósito') || t.includes('sarandí') || t.includes('sarandi')) {
+        // Base Operativa Timbúes (con dispersión sutil para visualización clara de cada pin)
+        return { lat: -32.6642 + (Math.random() - 0.5) * 0.003, lng: -60.7932 + (Math.random() - 0.5) * 0.003 };
+    }
+    if (t.includes('san lorenzo') || t.includes('san lorenso')) return { lat: -32.7441, lng: -60.7335 };
+    if (t.includes('puerto general san martin') || t.includes('pgsm') || t.includes('puerto san martin')) return { lat: -32.7167, lng: -60.7333 };
+    if (t.includes('renova')) return { lat: -32.6800, lng: -60.7200 };
+    if (t.includes('cofco')) return { lat: -32.6950, lng: -60.7250 };
+    if (t.includes('terminal 6') || t.includes('t6')) return { lat: -32.7050, lng: -60.7280 };
+    if (t.includes('dreyfus') || t.includes('ldc')) return { lat: -32.7230, lng: -60.7180 };
+    if (t.includes('bunge')) return { lat: -32.7110, lng: -60.7250 };
+    if (t.includes('molinos') || t.includes('vicentin')) return { lat: -32.7350, lng: -60.7290 };
+    if (t.includes('ricardone')) return { lat: -32.7711, lng: -60.7892 };
+    if (t.includes('bermudez') || t.includes('bermúdez')) return { lat: -32.8189, lng: -60.7142 };
+    if (t.includes('baigorria')) return { lat: -32.8536, lng: -60.7103 };
+    if (t.includes('rosario')) return { lat: -32.9587, lng: -60.6930 };
+    if (t.includes('vgg') || t.includes('villa gobernador galvez') || t.includes('gálvez')) return { lat: -33.0298, lng: -60.6277 };
+    if (t.includes('cargill')) return { lat: -33.0210, lng: -60.6120 };
+    if (t.includes('san nicolas') || t.includes('san nicolás')) return { lat: -33.3333, lng: -60.2167 };
+    if (t.includes('villa constitucion') || t.includes('constitución')) return { lat: -33.2278, lng: -60.3297 };
+    if (t.includes('santa fe')) return { lat: -31.6333, lng: -60.7000 };
+    if (t.includes('cordoba') || t.includes('córdoba')) return { lat: -31.4201, lng: -64.1888 };
+    if (t.includes('campana')) return { lat: -34.1687, lng: -58.9591 };
+    if (t.includes('zarate') || t.includes('zárate')) return { lat: -34.0989, lng: -59.0286 };
+    if (t.includes('quilmes')) return { lat: -34.7415, lng: -58.2733 };
+    if (t.includes('luján') || t.includes('lujan')) return { lat: -34.5701, lng: -59.1053 };
+    if (t.includes('cañuelas') || t.includes('canuelas')) return { lat: -35.0501, lng: -58.7594 };
+    if (t.includes('escobar')) return { lat: -34.3486, lng: -58.7931 };
+    if (t.includes('pilar')) return { lat: -34.4587, lng: -58.9142 };
+    if (t.includes('tigre')) return { lat: -34.4198, lng: -58.6032 };
+    if (t.includes('la plata')) return { lat: -34.9021, lng: -57.9789 };
+    if (t.includes('puerto madero') || t.includes('caba') || t.includes('buenos aires') || t.includes('puerto nuevo')) return { lat: -34.5723, lng: -58.3708 };
+    if (t.includes('avellaneda')) return { lat: -34.6634, lng: -58.3651 };
+    
+    // Si no coincide exactamente, ubicar en la zona industrial de Timbúes/San Lorenzo con ligera variación
+    return { lat: -32.6642 + (Math.random() - 0.5) * 0.02, lng: -60.7932 + (Math.random() - 0.5) * 0.02 };
+};
+
+window.onEstadoContenedorChange = function(estado) {
+    const fields = document.getElementById('form-cont-alquiler-fields');
+    if (!fields) return;
+    if (estado === 'alquilado' || estado === 'reservado') {
+        fields.style.display = 'block';
+    } else {
+        fields.style.display = 'none';
+    }
+};
+
+
+// =========================================================
+// DESGLOSE DISPONIBILIDAD EN BASE: ACOSTA vs SG MONTAJES
+// =========================================================
+
+window.abrirModalDisponiblesBase = function() {
+    const modal = document.getElementById('modal-disponibles-base');
+    if (!modal) return;
+
+    const list = appData.contenedores || [];
+    const enBase = list.filter(x => x.estado === 'empresa');
+
+    let acostaCount = 0;
+    let sgCount = 0;
+    const itemsHtml = [];
+
+    enBase.forEach(c => {
+        const prov = (c.proveedor || '').toUpperCase();
+        const isSg = prov.includes('SG') || prov.includes('MONTAJES');
+        if (isSg) {
+            sgCount++;
+        } else {
+            acostaCount++;
+        }
+
+        const tagColor = isSg ? '#f59e0b' : '#38bdf8';
+        const tagBorder = isSg ? 'rgba(245, 158, 11, 0.4)' : 'rgba(56, 189, 248, 0.4)';
+        const tagBg = isSg ? 'rgba(245, 158, 11, 0.12)' : 'rgba(2, 132, 199, 0.12)';
+        const provName = isSg ? 'SG Montajes' : 'Acosta Servicios';
+
+        itemsHtml.push(`
+            <div style="display: flex; justify-content: space-between; align-items: center; background: ${tagBg}; border: 1px solid ${tagBorder}; border-radius: 6px; padding: 6px 10px; font-size: 11.5px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <strong style="font-family: monospace; font-size: 12.5px; color: ${tagColor};">${c.code}</strong>
+                    <span style="color: #cbd5e1; font-weight: 600;">${c.tipo} (${c.medida})</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 10.5px; color: ${tagColor}; font-weight: bold;">${provName}</span>
+                    <button class="btn btn-warning btn-sm" style="padding: 2px 6px; font-size: 10px;" onclick="cerrarModales(); abrirModalAlquiler('${c.code}')">
+                        <i class="fas fa-handshake"></i> Alquilar
+                    </button>
+                </div>
+            </div>
+        `);
+    });
+
+    const elAcosta = document.getElementById('modal-base-count-acosta');
+    if (elAcosta) elAcosta.textContent = acostaCount;
+
+    const elSg = document.getElementById('modal-base-count-sg');
+    if (elSg) elSg.textContent = sgCount;
+
+    const elList = document.getElementById('modal-base-list-items');
+    if (elList) {
+        elList.innerHTML = itemsHtml.length > 0 ? itemsHtml.join('') : '<div style="color: #94a3b8; font-size: 12px; text-align: center; padding: 8px;">No hay unidades disponibles en base en este momento.</div>';
+    }
+
+    modal.style.display = 'flex';
+};
+
+window.filtrarFlotaPorBaseYProveedor = function(provFiltro) {
+    cerrarModales();
+    switchView('flota');
+    setFilterEstado('empresa');
+    
+    // Limpiar buscador de texto para no filtrar por texto erróneo
+    const input = document.getElementById('flota-search-input');
+    if (input) {
+        input.value = '';
+        appData.searchQuery = '';
+    }
+    
+    const provKey = (provFiltro || '').toUpperCase().includes('SG') ? 'sg' : 'acosta';
+    window.setFilterProveedor(provKey);
+    
+    const provNombre = provKey === 'sg' ? 'SG Montajes' : 'Acosta Servicios';
+    showToast(`✓ Mostrando unidades en Base de ${provNombre}`, 'info');
+};

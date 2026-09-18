@@ -25,7 +25,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Av. Calchaquí 5600, Quilmes",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-102",
@@ -52,7 +53,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Av. Circunvalación 900, Luján",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-103",
@@ -77,7 +79,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Av. Circunvalación 900, Luján",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-104",
@@ -102,7 +105,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Ruta 6 Km 118, Cañuelas",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-105",
@@ -129,7 +133,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Ruta 6 Km 118, Cañuelas",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-106",
@@ -156,7 +161,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Av. Calchaquí 5600, Quilmes",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-107",
@@ -181,7 +187,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Camino Centenario 2200, La Plata",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-108",
@@ -206,7 +213,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Av. Calchaquí 5600, Quilmes",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-109",
@@ -215,15 +223,16 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "empresa",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
     "obsRetiro": "",
     "tareas": [],
-    "historial": []
+    "historial": [],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-110",
@@ -232,9 +241,9 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "reservado",
     "pago": "al_dia",
     "cliente": "Áridos del Sur",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
@@ -247,10 +256,11 @@ window.CONTENEDORES_INITIAL_DB = [
         "fecha": "2026-01-01",
         "accion": "Asignación inicial",
         "cliente": "Áridos del Sur",
-        "ubicacion": "Depósito central — Sarandí",
+        "ubicacion": "Base Operativa — Timbúes",
         "estado": "reservado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-111",
@@ -259,15 +269,16 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "empresa",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
     "obsRetiro": "",
     "tareas": [],
-    "historial": []
+    "historial": [],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-112",
@@ -295,7 +306,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Av. Calchaquí 5600, Quilmes",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-113",
@@ -304,15 +316,16 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "empresa",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
     "obsRetiro": "",
     "tareas": [],
-    "historial": []
+    "historial": [],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-114",
@@ -337,7 +350,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Av. Circunvalación 900, Luján",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-115",
@@ -346,9 +360,9 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "reparacion",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Taller propio — Sarandí",
-    "lat": -34.6801,
-    "lng": -58.3327,
+    "ubicacion": "Taller propio — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
@@ -357,7 +371,8 @@ window.CONTENEDORES_INITIAL_DB = [
       "Reparar piso",
       "Cambiar cerradura"
     ],
-    "historial": []
+    "historial": [],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-116",
@@ -382,7 +397,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Ruta 6 Km 118, Cañuelas",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-117",
@@ -391,9 +407,9 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "empresa",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
@@ -402,7 +418,8 @@ window.CONTENEDORES_INITIAL_DB = [
       "Cambiar luminaria",
       "Cambiar cerradura"
     ],
-    "historial": []
+    "historial": [],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-118",
@@ -411,9 +428,9 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "reservado",
     "pago": "al_dia",
     "cliente": "Ingeniería Delta",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
@@ -426,10 +443,11 @@ window.CONTENEDORES_INITIAL_DB = [
         "fecha": "2026-01-01",
         "accion": "Asignación inicial",
         "cliente": "Ingeniería Delta",
-        "ubicacion": "Depósito central — Sarandí",
+        "ubicacion": "Base Operativa — Timbúes",
         "estado": "reservado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-119",
@@ -438,15 +456,16 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "reparacion",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Taller propio — Sarandí",
-    "lat": -34.6801,
-    "lng": -58.3327,
+    "ubicacion": "Taller propio — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
     "obsRetiro": "",
     "tareas": [],
-    "historial": []
+    "historial": [],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-120",
@@ -455,15 +474,16 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "empresa",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
     "obsRetiro": "",
     "tareas": [],
-    "historial": []
+    "historial": [],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-121",
@@ -472,15 +492,16 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "reparacion",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Taller propio — Sarandí",
-    "lat": -34.6801,
-    "lng": -58.3327,
+    "ubicacion": "Taller propio — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
     "obsRetiro": "",
     "tareas": [],
-    "historial": []
+    "historial": [],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-122",
@@ -489,9 +510,9 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "reservado",
     "pago": "al_dia",
     "cliente": "Minera Cerro Azul",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
@@ -502,10 +523,11 @@ window.CONTENEDORES_INITIAL_DB = [
         "fecha": "2026-01-01",
         "accion": "Asignación inicial",
         "cliente": "Minera Cerro Azul",
-        "ubicacion": "Depósito central — Sarandí",
+        "ubicacion": "Base Operativa — Timbúes",
         "estado": "reservado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-123",
@@ -530,7 +552,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Parque Industrial Tigre, Nave 3",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-124",
@@ -557,7 +580,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Puerto Nuevo, Dársena D, CABA",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-125",
@@ -582,7 +606,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Puerto Nuevo, Dársena D, CABA",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-126",
@@ -609,7 +634,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Ruta 9 Km 42, Escobar",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-127",
@@ -634,7 +660,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Ruta 9 Km 42, Escobar",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-128",
@@ -643,15 +670,16 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "empresa",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
     "obsRetiro": "",
     "tareas": [],
-    "historial": []
+    "historial": [],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-129",
@@ -660,9 +688,9 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "reparacion",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Taller propio — Sarandí",
-    "lat": -34.6801,
-    "lng": -58.3327,
+    "ubicacion": "Taller propio — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
@@ -670,7 +698,8 @@ window.CONTENEDORES_INITIAL_DB = [
     "tareas": [
       "Cambiar cerradura"
     ],
-    "historial": []
+    "historial": [],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-130",
@@ -697,7 +726,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Parque Industrial Tigre, Nave 3",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-131",
@@ -706,15 +736,16 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "empresa",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
     "obsRetiro": "",
     "tareas": [],
-    "historial": []
+    "historial": [],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-132",
@@ -739,7 +770,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Ruta 9 Km 42, Escobar",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-133",
@@ -764,7 +796,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Av. Calchaquí 5600, Quilmes",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-134",
@@ -773,9 +806,9 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "empresa",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
@@ -783,7 +816,8 @@ window.CONTENEDORES_INITIAL_DB = [
     "tareas": [
       "Sellar filtración de techo"
     ],
-    "historial": []
+    "historial": [],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-135",
@@ -808,7 +842,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Ruta 9 Km 42, Escobar",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "SG MONTAJES SRL"
   },
   {
     "code": "C-136",
@@ -817,15 +852,16 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "reparacion",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Taller propio — Sarandí",
-    "lat": -34.6801,
-    "lng": -58.3327,
+    "ubicacion": "Taller propio — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
     "obsRetiro": "",
     "tareas": [],
-    "historial": []
+    "historial": [],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-137",
@@ -850,7 +886,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Av. Calchaquí 5600, Quilmes",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-138",
@@ -875,7 +912,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Av. Calchaquí 5600, Quilmes",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-139",
@@ -884,15 +922,16 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "empresa",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
     "obsRetiro": "",
     "tareas": [],
-    "historial": []
+    "historial": [],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-140",
@@ -917,7 +956,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Parque Industrial Tigre, Nave 3",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-141",
@@ -926,9 +966,9 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "reservado",
     "pago": "al_dia",
     "cliente": "Minera Cerro Azul",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
@@ -939,10 +979,11 @@ window.CONTENEDORES_INITIAL_DB = [
         "fecha": "2026-01-01",
         "accion": "Asignación inicial",
         "cliente": "Minera Cerro Azul",
-        "ubicacion": "Depósito central — Sarandí",
+        "ubicacion": "Base Operativa — Timbúes",
         "estado": "reservado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-142",
@@ -967,7 +1008,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Ruta 6 Km 118, Cañuelas",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-143",
@@ -992,7 +1034,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Parque Industrial Pilar, Lote 7",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-144",
@@ -1019,7 +1062,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Ruta 9 Km 42, Escobar",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-145",
@@ -1028,15 +1072,16 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "empresa",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
     "obsRetiro": "",
     "tareas": [],
-    "historial": []
+    "historial": [],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-146",
@@ -1061,7 +1106,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Parque Industrial Pilar, Lote 7",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-147",
@@ -1089,7 +1135,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Ruta 6 Km 118, Cañuelas",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-148",
@@ -1114,7 +1161,8 @@ window.CONTENEDORES_INITIAL_DB = [
         "ubicacion": "Av. Mitre 3400, Avellaneda",
         "estado": "alquilado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-149",
@@ -1123,15 +1171,16 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "empresa",
     "pago": "al_dia",
     "cliente": "",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
     "obsRetiro": "",
     "tareas": [],
-    "historial": []
+    "historial": [],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   },
   {
     "code": "C-150",
@@ -1140,9 +1189,9 @@ window.CONTENEDORES_INITIAL_DB = [
     "estado": "reservado",
     "pago": "al_dia",
     "cliente": "Áridos del Sur",
-    "ubicacion": "Depósito central — Sarandí",
-    "lat": -34.6795,
-    "lng": -58.3312,
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6642,
+    "lng": -60.7932,
     "entrega": "",
     "retiro": "",
     "obsEntrega": "",
@@ -1155,9 +1204,36 @@ window.CONTENEDORES_INITIAL_DB = [
         "fecha": "2026-01-01",
         "accion": "Asignación inicial",
         "cliente": "Áridos del Sur",
-        "ubicacion": "Depósito central — Sarandí",
+        "ubicacion": "Base Operativa — Timbúes",
         "estado": "reservado"
       }
-    ]
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
+  },
+  {
+    "code": "C-55",
+    "tipo": "Oficina",
+    "medida": "20'",
+    "estado": "empresa",
+    "pago": "al_dia",
+    "cliente": "",
+    "ubicacion": "Base Operativa — Timbúes",
+    "lat": -32.6626,
+    "lng": -60.7916,
+    "entrega": "",
+    "retiro": "",
+    "obsEntrega": "Unidad C-55 dada de alta en Base Timbúes.",
+    "obsRetiro": "",
+    "tareas": [],
+    "historial": [
+      {
+        "fecha": "2026-03-01",
+        "accion": "Alta de unidad",
+        "cliente": "-",
+        "ubicacion": "Base Operativa — Timbúes",
+        "estado": "empresa"
+      }
+    ],
+    "proveedor": "ACOSTA SERVICIOS SRL"
   }
 ];
