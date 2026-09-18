@@ -1,4 +1,4 @@
-// Motor de Generación e Impresión de Remitos Oficiales — SG MONTAJES SRL
+// Motor de Generación e Impresión de Remitos Oficiales — ACOSTA SERVICIOS SRL
 window.generarRemitoHTML = function(cont, tipo = 'entrega') {
     const isEntrega = tipo === 'entrega';
     const nroRemito = `REM-${isEntrega ? 'ENT' : 'DEV'}-${cont.code}-${new Date().getFullYear()}`;
@@ -9,11 +9,11 @@ window.generarRemitoHTML = function(cont, tipo = 'entrega') {
         <!-- Encabezado Institucional -->
         <div class="remito-header-box" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #00529F; padding-bottom: 10px; margin-bottom: 15px;">
             <div style="display: flex; align-items: center; gap: 12px;">
-                <img src="logo_sg_montajes.png" alt="SG MONTAJES" style="height: 45px; width: auto; object-fit: contain;">
+                <img src="logo_acosta.png" alt="ACOSTA SERVICIOS" style="height: 45px; width: auto; object-fit: contain;">
                 <div>
-                    <div style="font-size: 18px; font-weight: 900; color: #00529F; letter-spacing: 0.5px;">SG MONTAJES S.R.L.</div>
+                    <div style="font-size: 18px; font-weight: 900; color: #1e3a8a; letter-spacing: 0.5px;">ACOSTA SERVICIOS S.R.L.</div>
                     <div style="font-size: 10.5px; color: #475569;">Ingeniería & Montajes Industriales • Logística de Flota</div>
-                    <div style="font-size: 9.5px; color: #64748b;">C.U.I.T.: 30-71602466-7 • I.V.A. Responsable Inscripto</div>
+                    <div style="font-size: 9.5px; color: #64748b;">C.U.I.T.: 30-71868621-7 • I.V.A. Responsable Inscripto</div>
                 </div>
             </div>
             <div style="text-align: right;">
@@ -29,11 +29,11 @@ window.generarRemitoHTML = function(cont, tipo = 'entrega') {
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px;">
             <tr style="background: #f1f5f9;">
                 <td style="padding: 6px 8px; border: 1px solid #cbd5e1; width: 50%;">
-                    <strong style="color: #00529F;">CLIENTE / EMPRESA:</strong><br>
-                    <span style="font-size: 13px; font-weight: bold;">${cont.cliente || 'SG MONTAJES SRL (Uso Interno)'}</span>
+                    <strong style="color: #1e3a8a;">CLIENTE / EMPRESA:</strong><br>
+                    <span style="font-size: 13px; font-weight: bold;">${cont.cliente || 'ACOSTA SERVICIOS SRL (Uso Interno)'}</span>
                 </td>
                 <td style="padding: 6px 8px; border: 1px solid #cbd5e1; width: 50%;">
-                    <strong style="color: #00529F;">OBRA / DESTINO:</strong><br>
+                    <strong style="color: #1e3a8a;">OBRA / DESTINO:</strong><br>
                     <span style="font-size: 12px;">${cont.ubicacion || 'Depósito Central — Sarandí'}</span>
                 </td>
             </tr>
@@ -59,7 +59,7 @@ window.generarRemitoHTML = function(cont, tipo = 'entrega') {
             </thead>
             <tbody>
                 <tr>
-                    <td style="font-family: monospace; font-size: 13px; font-weight: bold; text-align: center; color: #00529F;">${cont.code}</td>
+                    <td style="font-family: monospace; font-size: 13px; font-weight: bold; text-align: center; color: #1e3a8a;">${cont.code}</td>
                     <td style="font-weight: bold;">Contenedor ${cont.tipo}</td>
                     <td style="text-align: center; font-weight: bold;">${cont.medida}</td>
                     <td>${cont.obsEntrega || 'Unidad entregada en condiciones operativas estándar.'}</td>
@@ -69,7 +69,7 @@ window.generarRemitoHTML = function(cont, tipo = 'entrega') {
 
         <!-- Checklist de Inspección Técnica -->
         <div style="margin: 15px 0; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; background: #fafafa;">
-            <div style="font-size: 11px; font-weight: bold; color: #00529F; margin-bottom: 8px; text-transform: uppercase;">
+            <div style="font-size: 11px; font-weight: bold; color: #1e3a8a; margin-bottom: 8px; text-transform: uppercase;">
                 ✓ Checklist de Inspección en ${isEntrega ? 'Entrega en Obra' : 'Retiro / Recepción'}:
             </div>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; font-size: 10.5px;">
@@ -93,7 +93,7 @@ window.generarRemitoHTML = function(cont, tipo = 'entrega') {
         <!-- Firmas de Conformidad -->
         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px; padding-top: 15px; font-size: 11px;">
             <div style="text-align: center; width: 45%; border-top: 1px solid #0f172a; padding-top: 6px;">
-                <strong>SG MONTAJES S.R.L.</strong><br>
+                <strong>ACOSTA SERVICIOS S.R.L.</strong><br>
                 <span style="font-size: 9.5px; color: #64748b;">Responsable de Logística y Despacho</span>
             </div>
             <div style="text-align: center; width: 45%; border-top: 1px solid #0f172a; padding-top: 6px;">

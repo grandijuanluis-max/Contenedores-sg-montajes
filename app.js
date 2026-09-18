@@ -1,5 +1,5 @@
 // =========================================================
-// SG MONTAJES SRL — SISTEMA DE GESTIÓN DE FLOTA Y CONTENEDORES
+// ACOSTA SERVICIOS SRL — SISTEMA DE GESTIÓN DE FLOTA Y CONTENEDORES
 // Lógica de Negocio, Autenticación, Configuración y CRUD
 // =========================================================
 
@@ -21,11 +21,11 @@ const DEFAULT_USERS = [
 ];
 
 const DEFAULT_SETTINGS = {
-    empresa: 'SG MONTAJES S.R.L.',
-    cuit: '30-71602466-7',
+    empresa: 'ACOSTA SERVICIOS S.R.L.',
+    cuit: '30-71868621-7',
     iva: 'Responsable Inscripto',
     deposito_principal: 'Depósito central — Sarandí',
-    direccion: 'Av. Mitre 3400, Sarandí, Avellaneda, Buenos Aires',
+    direccion: 'Estanislao López, Timbúes, Santa Fe',
     email_notificaciones: 'cotizaciones@sgmontajes.com.ar',
     telefono: '(0341) 5890126'
 };
@@ -63,7 +63,7 @@ let appData = {
 
 // Carga Inicial de Datos
 window.initContenedoresApp = function() {
-    console.log("Iniciando Sistema de Contenedores SG Montajes...");
+    console.log("Iniciando Sistema de Contenedores Acosta Servicios...");
 
     // 1. Cargar Usuarios
     try {
@@ -1306,13 +1306,13 @@ const RTC_CONFIG = {
 
 // Notificación de llamada parpadeando en la pestaña del navegador
 let titleFlashInterval = null;
-const originalDocTitle = document.title || 'SG Montajes - Contenedores';
+const originalDocTitle = document.title || 'Acosta Servicios - Contenedores';
 
 function startTitleNotification(text) {
     stopTitleNotification();
     let toggle = false;
     titleFlashInterval = setInterval(() => {
-        document.title = toggle ? `🔔 ${text}` : `📞 SG MONTAJES — LLAMADA...`;
+        document.title = toggle ? `🔔 ${text}` : `📞 ACOSTA SERVICIOS — LLAMADA...`;
         toggle = !toggle;
     }, 800);
 }
@@ -1988,7 +1988,7 @@ window.agregarNotaContenedor = function(code) {
 
 // 5. INICIALIZACIÓN DEL MOTOR MULTIPLAYER Y SEÑALIZACIÓN EN VIVO
 window.initCollaborativeEngine = function() {
-    console.log("Iniciando Motor Colaborativo SG Montajes...");
+    console.log("Iniciando Motor Colaborativo Acosta Servicios...");
 
     // Cargar historial de eventos y pings desde almacenamiento local
     try {
@@ -2604,7 +2604,7 @@ function renderDashboardTable() {
             <td><strong>${c.tipo}</strong> <span style="font-size: 11px; color: #94a3b8;">(${c.medida})</span></td>
             <td>${renderBadgeEstado(c.estado)}</td>
             <td>${renderBadgePago(c.pago)}</td>
-            <td>${c.cliente ? `<strong>${c.cliente}</strong>` : '<span style="color: #64748b;">SG Montajes (Base)</span>'}</td>
+            <td>${c.cliente ? `<strong>${c.cliente}</strong>` : '<span style="color: #64748b;">Acosta Servicios (Base)</span>'}</td>
             <td>${c.ubicacion || 'Depósito Sarandí'}</td>
             <td>${c.retiro ? `<span style="font-family: monospace; font-size: 11.5px;">${c.retiro}</span>` : '<span style="color: #64748b;">-</span>'}</td>
             <td>
@@ -2793,7 +2793,7 @@ window.renderFlotaTable = function() {
                     '<span class="badge-pago-ok"><i class="fas fa-check"></i> Al Día</span>'}
             </td>
             <td>
-                <strong>${c.cliente || '<span style="color:#64748b;">(SG Montajes - Base)</span>'}</strong>
+                <strong>${c.cliente || '<span style="color:#64748b;">(Acosta Servicios - Base)</span>'}</strong>
                 <div style="font-size: 10.5px; color: #94a3b8;">${c.ubicacion || 'Depósito Central Sarandí'}</div>
             </td>
             <td>
@@ -3132,7 +3132,7 @@ function populateMarkers(layerGroup, isMini) {
         .bindPopup(`
             <div style="font-size: 12.5px; color: #ffffff;">
                 <div style="font-weight: 800; color: #F3B229; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-warehouse"></i> SG MONTAJES — Depósito Sarandí
+                    <i class="fas fa-warehouse"></i> ACOSTA SERVICIOS — Depósito Timbúes
                 </div>
                 <div style="color: #94a3b8; font-size: 11.5px; margin-bottom: 6px;">Av. Mitre 3400, Sarandí, Avellaneda</div>
                 <div style="background: rgba(255,255,255,0.08); padding: 6px 8px; border-radius: 4px; font-size: 11px;">
@@ -3163,7 +3163,7 @@ function populateMarkers(layerGroup, isMini) {
                         <div style="font-weight: 800; color: #38bdf8; font-size: 13px; margin-bottom: 4px;">
                             ${c.code} — ${c.tipo} (${c.medida})
                         </div>
-                        <div style="margin-bottom: 3px;"><strong>Cliente:</strong> ${c.cliente || 'SG Montajes'}</div>
+                        <div style="margin-bottom: 3px;"><strong>Cliente:</strong> ${c.cliente || 'Acosta Servicios'}</div>
                         <div style="margin-bottom: 3px; font-size: 11px; color: #94a3b8;"><i class="fas fa-map-marker-alt"></i> ${c.ubicacion || 'Obra'}</div>
                         <div style="margin-bottom: 6px; font-size: 11px;"><strong>Retiro Prog:</strong> ${c.retiro || '-'}</div>
                         <div style="display: flex; gap: 4px; margin-top: 6px;">
@@ -3187,7 +3187,7 @@ function initDashboardMap() {
             
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
-                attribution: 'Tiles &copy; Esri &mdash; SG MONTAJES SRL'
+                attribution: 'Tiles &copy; Esri &mdash; ACOSTA SERVICIOS SRL'
             }).addTo(appData.dashMapInstance);
 
             appData.dashMarkersGroup = L.layerGroup().addTo(appData.dashMapInstance);
@@ -3211,7 +3211,7 @@ function initMap() {
             
             const streetLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
-                attribution: 'Tiles &copy; Esri &mdash; SG MONTAJES SRL'
+                attribution: 'Tiles &copy; Esri &mdash; ACOSTA SERVICIOS SRL'
             });
 
             const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -3578,7 +3578,7 @@ window.exportarContenedoresExcel = function() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Flota_Contenedores_SG_Montajes_${new Date().toISOString().slice(0,10)}.xls`;
+    a.download = `Flota_Contenedores_Acosta_Servicios_${new Date().toISOString().slice(0,10)}.xls`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

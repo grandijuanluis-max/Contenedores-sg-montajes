@@ -1,5 +1,14 @@
 -- ========================================================================
--- SCHEMA SQL PARA SUPABASE — SISTEMA DE GESTIÓN DE CONTENEDORES SG MONTAJES
+-- RESET Y RECREACIÓN — SISTEMA DE GESTIÓN DE CONTENEDORES ACOSTA SERVICIOS SRL
+-- (IDs Correlativos 1, 2, 3... e Índices B-Tree)
+-- ========================================================================
+
+DROP TABLE IF EXISTS public.contenedores CASCADE;
+DROP TABLE IF EXISTS public.usuarios_contenedores CASCADE;
+DROP TABLE IF EXISTS public.configuracion_contenedores CASCADE;
+
+-- ========================================================================
+-- SCHEMA SQL PARA SUPABASE — SISTEMA DE GESTIÓN DE CONTENEDORES ACOSTA SERVICIOS
 -- ========================================================================
 
 -- 1. Tabla de Usuarios del Sistema
@@ -16,11 +25,11 @@ CREATE TABLE IF NOT EXISTS public.usuarios_contenedores (
 -- 2. Tabla de Configuración de la Empresa
 CREATE TABLE IF NOT EXISTS public.configuracion_contenedores (
     id BIGINT PRIMARY KEY DEFAULT 1,
-    empresa TEXT NOT NULL DEFAULT 'SG MONTAJES S.R.L.',
-    cuit TEXT NOT NULL DEFAULT '30-71602466-7',
+    empresa TEXT NOT NULL DEFAULT 'ACOSTA SERVICIOS S.R.L.',
+    cuit TEXT NOT NULL DEFAULT '30-71868621-7',
     iva TEXT DEFAULT 'Responsable Inscripto',
     deposito_principal TEXT DEFAULT 'Depósito central — Sarandí',
-    direccion TEXT DEFAULT 'Av. Mitre 3400, Sarandí, Avellaneda, Buenos Aires',
+    direccion TEXT DEFAULT 'Estanislao López, Timbúes, Santa Fe',
     email_notificaciones TEXT DEFAULT 'cotizaciones@sgmontajes.com.ar',
     telefono TEXT DEFAULT '(0341) 5890126',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -73,7 +82,7 @@ ON public.usuarios_contenedores FOR ALL USING (true) WITH CHECK (true);
 
 -- Insertar configuración inicial
 INSERT INTO public.configuracion_contenedores (id, empresa, cuit, iva, deposito_principal, direccion, email_notificaciones, telefono)
-VALUES (1, 'SG MONTAJES S.R.L.', '30-71602466-7', 'Responsable Inscripto', 'Depósito central — Sarandí', 'Av. Mitre 3400, Sarandí, Avellaneda, Buenos Aires', 'cotizaciones@sgmontajes.com.ar', '(0341) 5890126')
+VALUES (1, 'ACOSTA SERVICIOS S.R.L.', '30-71868621-7', 'Responsable Inscripto', 'Depósito central — Sarandí', 'Estanislao López, Timbúes, Santa Fe', 'cotizaciones@sgmontajes.com.ar', '(0341) 5890126')
 ON CONFLICT (id) DO NOTHING;
 
 -- Insertar usuario administrador inicial
