@@ -1,0 +1,51 @@
+﻿code,tipo,medida,estado,pago,cliente,ubicacion,lat,lng,entrega,retiro,obsEntrega,obsRetiro,tareas
+C-101,Oficina,20',alquilado,retrasado,Obra Puerto Norte,"Av. Calchaquí 5600, Quilmes",-34.7415,-58.2733,2026-04-21,2026-09-20,,,
+C-102,Oficina,10',alquilado,al_dia,Ingeniería Delta,"Av. Circunvalación 900, Luján",-34.5701,-59.1053,2026-07-21,2026-10-14,"Entregado con 2 llaves, aire funcionando, piso sin marcas.",,Sellar filtración de techo
+C-103,Pañol,20',alquilado,al_dia,Consorcio Ruta 9,"Av. Circunvalación 900, Luján",-34.5701,-59.1053,2026-06-18,2026-11-16,,,
+C-104,Comedor,40',alquilado,al_dia,Constructora Riolar,"Ruta 6 Km 118, Cañuelas",-35.0501,-58.7594,2025-12-19,2026-11-02,"Entregado con 2 llaves, aire funcionando, piso sin marcas.",,
+C-105,Pañol,40',alquilado,retrasado,Metalúrgica Sanz,"Ruta 6 Km 118, Cañuelas",-35.0501,-58.7594,2026-05-21,2026-09-23,,,Pintura exterior
+C-106,Pañol,20',alquilado,al_dia,Tecnorural SRL,"Av. Calchaquí 5600, Quilmes",-34.7415,-58.2733,2026-04-22,2026-08-31,"Entregado con 2 llaves, aire funcionando, piso sin marcas.",,Cambiar aire acondicionado
+C-107,Comedor,10',alquilado,retrasado,Consorcio Ruta 9,"Camino Centenario 2200, La Plata",-34.9021,-57.9789,2026-03-30,2026-09-29,,,
+C-108,Comedor,10',alquilado,al_dia,Tecnorural SRL,"Av. Calchaquí 5600, Quilmes",-34.7415,-58.2733,2026-04-05,2026-09-21,"Entregado con 2 llaves, aire funcionando, piso sin marcas.",,
+C-109,Oficina,40',empresa,al_dia,,Depósito central — Sarandí,-34.6795,-58.3312,,,,,
+C-110,Comedor,10',reservado,al_dia,Áridos del Sur,Depósito central — Sarandí,-34.6795,-58.3312,,,,,Sellar filtración de techo
+C-111,Pañol,10',empresa,al_dia,,Depósito central — Sarandí,-34.6795,-58.3312,,,,,
+C-112,Comedor,20',alquilado,al_dia,Ingeniería Delta,"Av. Calchaquí 5600, Quilmes",-34.7415,-58.2733,2026-03-12,2026-09-23,,,Limpieza profunda | Pintura exterior
+C-113,Comedor,40',empresa,al_dia,,Depósito central — Sarandí,-34.6795,-58.3312,,,,,
+C-114,Comedor,40',alquilado,al_dia,Ingeniería Delta,"Av. Circunvalación 900, Luján",-34.5701,-59.1053,2025-12-11,2026-09-08,,,
+C-115,Oficina,20',reparacion,al_dia,,Taller propio — Sarandí,-34.6801,-58.3327,,,,,Reparar piso | Cambiar cerradura
+C-116,Comedor,10',alquilado,retrasado,Áridos del Sur,"Ruta 6 Km 118, Cañuelas",-35.0501,-58.7594,2026-04-05,2026-09-13,,,
+C-117,Pañol,40',empresa,al_dia,,Depósito central — Sarandí,-34.6795,-58.3312,,,,,Cambiar luminaria | Cambiar cerradura
+C-118,Comedor,10',reservado,al_dia,Ingeniería Delta,Depósito central — Sarandí,-34.6795,-58.3312,,,,,Reparar puerta
+C-119,Pañol,40',reparacion,al_dia,,Taller propio — Sarandí,-34.6801,-58.3327,,,,,
+C-120,Oficina,40',empresa,al_dia,,Depósito central — Sarandí,-34.6795,-58.3312,,,,,
+C-121,Pañol,10',reparacion,al_dia,,Taller propio — Sarandí,-34.6801,-58.3327,,,,,
+C-122,Comedor,10',reservado,al_dia,Minera Cerro Azul,Depósito central — Sarandí,-34.6795,-58.3312,,,,,
+C-123,Comedor,20',alquilado,al_dia,Obra Vial Km 42,"Parque Industrial Tigre, Nave 3",-34.4198,-58.6032,2026-02-01,2026-08-26,,,
+C-124,Oficina,10',alquilado,al_dia,Ingeniería Delta,"Puerto Nuevo, Dársena D, CABA",-34.5723,-58.3708,2025-12-18,2026-08-28,"Entregado con 2 llaves, aire funcionando, piso sin marcas.",,Pintura exterior
+C-125,Comedor,20',alquilado,al_dia,Minera Cerro Azul,"Puerto Nuevo, Dársena D, CABA",-34.5723,-58.3708,2025-12-24,2026-09-22,"Entregado con 2 llaves, aire funcionando, piso sin marcas.",,
+C-126,Comedor,20',alquilado,al_dia,Ingeniería Delta,"Ruta 9 Km 42, Escobar",-34.3486,-58.7931,2026-01-14,2026-09-27,,,Limpieza profunda
+C-127,Pañol,20',alquilado,retrasado,Constructora Riolar,"Ruta 9 Km 42, Escobar",-34.3486,-58.7931,2026-03-27,2026-08-20,,,
+C-128,Oficina,20',empresa,al_dia,,Depósito central — Sarandí,-34.6795,-58.3312,,,,,
+C-129,Oficina,40',reparacion,al_dia,,Taller propio — Sarandí,-34.6801,-58.3327,,,,,Cambiar cerradura
+C-130,Pañol,20',alquilado,al_dia,Consorcio Ruta 9,"Parque Industrial Tigre, Nave 3",-34.4198,-58.6032,2025-12-11,2026-10-14,,,Limpieza profunda
+C-131,Pañol,20',empresa,al_dia,,Depósito central — Sarandí,-34.6795,-58.3312,,,,,
+C-132,Pañol,40',alquilado,al_dia,Constructora Riolar,"Ruta 9 Km 42, Escobar",-34.3486,-58.7931,2025-12-18,2026-09-02,,,
+C-133,Pañol,10',alquilado,al_dia,Tecnorural SRL,"Av. Calchaquí 5600, Quilmes",-34.7415,-58.2733,2026-07-01,2026-11-06,"Entregado con 2 llaves, aire funcionando, piso sin marcas.",,
+C-134,Comedor,40',empresa,al_dia,,Depósito central — Sarandí,-34.6795,-58.3312,,,,,Sellar filtración de techo
+C-135,Comedor,20',alquilado,al_dia,Obra Puerto Norte,"Ruta 9 Km 42, Escobar",-34.3486,-58.7931,2026-01-09,2026-11-17,"Entregado con 2 llaves, aire funcionando, piso sin marcas.",,
+C-136,Pañol,20',reparacion,al_dia,,Taller propio — Sarandí,-34.6801,-58.3327,,,,,
+C-137,Oficina,20',alquilado,al_dia,Tecnorural SRL,"Av. Calchaquí 5600, Quilmes",-34.7415,-58.2733,2026-01-20,2026-09-23,"Entregado con 2 llaves, aire funcionando, piso sin marcas.",,
+C-138,Oficina,20',alquilado,al_dia,Ingeniería Delta,"Av. Calchaquí 5600, Quilmes",-34.7415,-58.2733,2026-01-29,2026-09-15,"Entregado con 2 llaves, aire funcionando, piso sin marcas.",,
+C-139,Oficina,10',empresa,al_dia,,Depósito central — Sarandí,-34.6795,-58.3312,,,,,
+C-140,Pañol,10',alquilado,al_dia,Minera Cerro Azul,"Parque Industrial Tigre, Nave 3",-34.4198,-58.6032,2026-05-25,2026-08-21,,,
+C-141,Oficina,20',reservado,al_dia,Minera Cerro Azul,Depósito central — Sarandí,-34.6795,-58.3312,,,,,
+C-142,Pañol,20',alquilado,al_dia,Ingeniería Delta,"Ruta 6 Km 118, Cañuelas",-35.0501,-58.7594,2026-01-17,2026-11-09,,,
+C-143,Pañol,20',alquilado,al_dia,Ingeniería Delta,"Parque Industrial Pilar, Lote 7",-34.4587,-58.9142,2026-08-05,2026-10-21,"Entregado con 2 llaves, aire funcionando, piso sin marcas.",,
+C-144,Comedor,10',alquilado,retrasado,Ingeniería Delta,"Ruta 9 Km 42, Escobar",-34.3486,-58.7931,2025-12-17,2026-10-25,"Entregado con 2 llaves, aire funcionando, piso sin marcas.",,Pintura exterior
+C-145,Pañol,10',empresa,al_dia,,Depósito central — Sarandí,-34.6795,-58.3312,,,,,
+C-146,Pañol,10',alquilado,al_dia,Constructora Riolar,"Parque Industrial Pilar, Lote 7",-34.4587,-58.9142,2026-06-23,2026-10-18,"Entregado con 2 llaves, aire funcionando, piso sin marcas.",,
+C-147,Pañol,20',alquilado,al_dia,Metalúrgica Sanz,"Ruta 6 Km 118, Cañuelas",-35.0501,-58.7594,2026-02-19,2026-08-27,"Entregado con 2 llaves, aire funcionando, piso sin marcas.",,Reparar aire acondicionado | Revisión eléctrica
+C-148,Comedor,40',alquilado,al_dia,Obra Puerto Norte,"Av. Mitre 3400, Avellaneda",-34.6634,-58.3651,2026-03-02,2026-08-29,,,
+C-149,Comedor,20',empresa,al_dia,,Depósito central — Sarandí,-34.6795,-58.3312,,,,,
+C-150,Pañol,20',reservado,al_dia,Áridos del Sur,Depósito central — Sarandí,-34.6795,-58.3312,,,,,Limpieza profunda

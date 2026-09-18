@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flota y Alquiler de Contenedores — SG MONTAJES SRL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="styles.css?v=120">
+</head>
+<body>
+
+    <!-- Notificaciones flotantes -->
+    <div id="toast-container"></div>
+
+        <!-- ================= 1. PANTALLA DE LOGIN ================= -->
+    <section id="login-view" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
+        <div class="login-card">
+            <div class="login-logo">
+                <img src="logo_sg_montajes.png" alt="SG MONTAJES" style="width: 140px; height: auto; object-fit: contain;">
+                <div class="login-title">SG <span style="color: #F3B229;">MONTAJES</span></div>
+                <div class="login-subtitle">Gestión de Contenedores</div>
+            </div>
+            <div>
+                <div class="form-group" style="margin-bottom: 12px; text-align: left;">
+                    <label style="color: #cbd5e1; font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Usuario</label>
+                    <input type="text" id="login-username" value="melani" placeholder="Ingrese su usuario" autocomplete="username" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(30,41,59,0.85); color: #fff; font-size: 13px; outline: none;" onkeydown="if(event.key === 'Enter') { const p=document.getElementById('login-password'); if(p) p.focus(); }">
+                </div>
+                <div class="form-group" style="margin-bottom: 14px; text-align: left;">
+                    <label style="color: #cbd5e1; font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Contraseña</label>
+                    <input type="password" id="login-password" value="123" placeholder="••••••••" autocomplete="current-password" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(30,41,59,0.85); color: #fff; font-size: 13px; outline: none;" onkeydown="if(event.key === 'Enter') { window.ejecutarLogin(event); }">
+                </div>
+                <button type="button" class="btn btn-primary" onclick="window.ejecutarLogin(event)" style="width: 100%; height: 42px; font-size: 14px; font-weight: bold; justify-content: center; margin-top: 6px; cursor: pointer; background: #0284c7; border: none; border-radius: 6px; color: white; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-sign-in-alt"></i> Ingresar al Sistema
+                </button>
+            </div>
+            <div style="margin-top: 18px; font-size: 10.5px; color: #64748b;">
+                SG MONTAJES SRL • Control de Flota & Logística
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= 2. APLICACIÓN PRINCIPAL (DASHBOARD) ================= -->
+    <div id="main-app-view" style="display: none; min-height: 100vh; flex-direction: column;">
+
+        <!-- Encabezado Superior -->
+        <header class="glass-header">
+            <div class="logo-block">
+                <img src="logo_sg_montajes.png" alt="SG MONTAJES">
+                <div class="logo-text">SG <span>MONTAJES</span> <span style="font-size: 11px; font-weight: 600; color: #38bdf8; margin-left: 6px;">CONTENEDORES</span></div>
+            </div>
+
+            <div style="font-size: 11.5px; color: #94a3b8; display: flex; align-items: center; gap: 8px;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+                <span id="header-stats-summary">Cargando flota...</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; position: relative;">
+                <!-- Botón Usuarios en Línea -->
+                <div style="position: relative;">
+                    <button id="btn-header-online-users" class="btn btn-secondary btn-sm" onclick="toggleOnlineUsersFlyout(event)" style="display: inline-flex; align-items: center; gap: 6px; border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.12); color: #ffffff;" title="Ver operadores conectados en tiempo real">
+                        <span class="pulse-dot pulse-green"></span>
+                        <span id="header-online-count" style="font-weight: 700; color: #10b981;">1 en línea</span>
+                        <i class="fas fa-chevron-down" style="font-size: 9px; opacity: 0.7;"></i>
+                    </button>
+
+                    <!-- Dropdown Flyout de Usuarios Conectados -->
+                    <div id="flyout-online-users" class="online-users-dropdown" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px; margin-bottom: 8px;">
+                            <strong style="font-size: 12px; color: #ffffff;"><i class="fas fa-users" style="color: #38bdf8;"></i> Operadores Conectados</strong>
+                            <span id="online-users-total-badge" class="badge-estado badge-alquilado" style="font-size: 10px;">1 activo</span>
+                        </div>
+                        <div id="online-users-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 250px; overflow-y: auto;">
+                            <!-- Inyectado dinámicamente -->
+                        </div>
+                        <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--glass-border); font-size: 10px; color: #94a3b8; text-align: center;">
+                            <i class="fas fa-satellite-dish" style="color: #F3B229;"></i> Presencia colaborativa en vivo
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botón Torre de Control (Live Feed & Pings) -->
+                <button id="btn-open-torre" class="btn btn-primary btn-sm" onclick="toggleTorreControl()" style="display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #0284c7 0%, #00529F 100%); border-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);" title="Abrir Torre de Control">
+                    <i class="fas fa-tower-broadcast"></i>
+                    <span>Torre de Control</span>
+                    <span id="tower-pings-badge" class="badge-estado badge-reservado" style="font-size: 9px; padding: 1px 5px; display: none;">0</span>
+                </button>
+
+                <div style="border-left: 1px solid var(--glass-border); height: 20px; margin: 0 2px;"></div>
+
+                <button class="btn btn-warning btn-sm" onclick="abrirModalNuevoContenedor()">
+                    <i class="fas fa-plus-circle"></i> + Alta
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="exportarContenedoresExcel()" title="Exportar a Excel">
+                    <i class="fas fa-file-excel"></i> Excel
+                </button>
+                <div style="border-left: 1px solid var(--glass-border); height: 20px; margin: 0 2px;"></div>
+                <span style="font-size: 12px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 5px;">
+                    <i class="fas fa-user-circle"></i> <span id="current-user-display">Usuario</span>
+                </span>
+                <button class="btn btn-secondary btn-sm" onclick="ejecutarLogout()" title="Cerrar sesión">
+                    <i class="fas fa-sign-out-alt"></i> Salir
+                </button>
+            </div>
+        </header>
+
+        <!-- Barra de Navegación por Solapas con Botón Volver -->
+        <nav class="nav-bar">
+            <!-- Botón Volver Permanente y Dinámico -->
+            <button id="btn-global-back" class="btn btn-secondary btn-sm" onclick="goBack()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: #ffffff; border-color: #38bdf8; background: #0284c7; box-shadow: 0 0 10px rgba(56, 189, 248, 0.3); margin-right: 6px;" title="Volver a la pantalla anterior">
+                <i class="fas fa-arrow-left"></i> <span id="btn-global-back-label">Volver</span>
+            </button>
+            <div id="nav-back-separator" style="display: inline-block; border-left: 1px solid rgba(255, 255, 255, 0.2); height: 20px; margin: 0 6px 0 2px;"></div>
+
+            <button id="nav-btn-dashboard" class="nav-tab-btn active" onclick="switchView('dashboard')">
+                <i class="fas fa-chart-pie"></i> Tablero & KPIs
+            </button>
+            <button id="nav-btn-flota" class="nav-tab-btn" onclick="switchView('flota')">
+                <i class="fas fa-boxes-stacked"></i> Contenedores (Flota)
+            </button>
+            <button id="nav-btn-alquileres" class="nav-tab-btn" onclick="switchView('alquileres')">
+                <i class="fas fa-handshake"></i> Alquileres & Contratos
+            </button>
+            <button id="nav-btn-mantenimiento" class="nav-tab-btn" onclick="switchView('mantenimiento')">
+                <i class="fas fa-tools"></i> Mantenimiento & Taller
+            </button>
+            <button id="nav-btn-mapa" class="nav-tab-btn" onclick="switchView('mapa')">
+                <i class="fas fa-map-marked-alt"></i> Mapa de Obras
+            </button>
+            <button id="nav-btn-configuracion" class="nav-tab-btn" onclick="switchView('configuracion')">
+                <i class="fas fa-cog"></i> Configuración
+            </button>
+        </nav>
+
+        <!-- Contenedor Principal de Vistas -->
+        <main class="main-container">
+
+                        <!-- ================= VISTA 1: DASHBOARD EJECUTIVO ================= -->
+            <section id="view-dashboard" class="view-section">
+                
+                <!-- Hero Control Strip -->
+                <div class="dash-hero-banner">
+                    <div>
+                        <div class="dash-hero-title">
+                            <i class="fas fa-boxes-stacked" style="color: var(--warning);"></i> 
+                            Panel de Control <span>Flota & Alquileres</span>
+                        </div>
+                        <div class="dash-hero-sub">
+                            SG MONTAJES SRL • Seguimiento en tiempo real de 50 unidades y contratos operativos
+                        </div>
+                    </div>
+                    <div class="dash-quick-actions">
+                        <button class="btn btn-warning btn-sm" onclick="abrirModalNuevoContenedor()">
+                            <i class="fas fa-plus-circle"></i> + Alta Contenedor
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="abrirModalAsignarAlquilerDashboard()">
+                            <i class="fas fa-handshake"></i> ⚡ Asignar Alquiler
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="switchView('mapa')">
+                            <i class="fas fa-map-marked-alt"></i> Mapa Obras
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="exportarContenedoresExcel()" title="Descargar Planilla Excel">
+                            <i class="fas fa-file-excel" style="color: #10b981;"></i> Excel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Banner de Alertas si existen vencimientos -->
+                <div id="dashboard-alerts-banner" class="alerts-banner" style="display: none;"></div>
+
+                <!-- Métricas Principales (KPI Cards) -->
+                <div id="dashboard-kpi-grid" class="kpi-grid"></div>
+
+                <!-- Fila de Analítica: Distribución por Tipo, Vencimientos y Obras -->
+                <div id="dashboard-analytics-row" class="dash-analytics-grid">
+                    
+                    <!-- Widget 1: Ocupación por Tipo -->
+                    <div class="dash-widget">
+                        <div class="dash-widget-header">
+                            <div class="dash-widget-title">
+                                <i class="fas fa-cubes" style="color: #38bdf8;"></i> Ocupación por Modelo
+                            </div>
+                            <span style="font-size: 11px; color: #94a3b8;" id="dash-utilization-pct">0% Ocupación</span>
+                        </div>
+                        <div id="dash-types-container" style="display: flex; flex-direction: column; gap: 8px;">
+                            <!-- Inyectado dinámicamente -->
+                        </div>
+                    </div>
+
+                    <!-- Widget 2: Alertas de Vencimiento y Próximos Retiros -->
+                    <div class="dash-widget">
+                        <div class="dash-widget-header">
+                            <div class="dash-widget-title">
+                                <i class="fas fa-bell" style="color: #f43f5e;"></i> Alertas de Contratos
+                            </div>
+                            <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 10px;" onclick="switchView('alquileres')">
+                                Ver todos →
+                            </button>
+                        </div>
+                        <div id="dash-alerts-container" style="display: flex; flex-direction: column; gap: 6px; max-height: 230px; overflow-y: auto;">
+                            <!-- Inyectado dinámicamente -->
+                        </div>
+                    </div>
+
+                    <!-- Widget 3: Facturación Estimada & Obras Principales -->
+                    <div class="dash-widget">
+                        <div class="dash-widget-header">
+                            <div class="dash-widget-title">
+                                <i class="fas fa-chart-line" style="color: #10b981;"></i> Rendimiento & Obras
+                            </div>
+                            <span class="badge-estado badge-alquilado" style="font-size: 10px;" id="dash-active-clients-count">0 Obras</span>
+                        </div>
+                        <div id="dash-performance-container" style="display: flex; flex-direction: column; gap: 8px;">
+                            <!-- Inyectado dinámicamente -->
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Acceso Directo por Solapas (Dashboard enfocado y organizado) -->
+                <div class="glass-card" style="margin-top: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <h4 style="margin: 0; font-size: 14px; color: var(--warning); display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-layer-group"></i> Navegación Operativa por Solapas
+                            </h4>
+                            <span style="font-size: 11px; color: #94a3b8;">Haga clic en cualquier módulo para abrir su solapa correspondiente</span>
+                        </div>
+                    </div>
+
+                    <div class="dash-solapas-grid">
+                        <!-- Solapa 1: Contenedores y Flota -->
+                        <div class="dash-solapa-card" onclick="switchView('flota')">
+                            <div class="dash-solapa-icon" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
+                                <i class="fas fa-boxes-stacked"></i>
+                            </div>
+                            <div class="dash-solapa-info">
+                                <h5>Flota de Contenedores (50)</h5>
+                                <p>Inventario organizado por solapas de modelo (Oficinas, Pañoles, Comedores, Vestuarios) y estado operativo.</p>
+                                <span class="dash-solapa-link">Ver Contenedores por Solapa →</span>
+                            </div>
+                        </div>
+
+                        <!-- Solapa 2: Alquileres y Contratos -->
+                        <div class="dash-solapa-card" onclick="switchView('alquileres')">
+                            <div class="dash-solapa-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                                <i class="fas fa-handshake"></i>
+                            </div>
+                            <div class="dash-solapa-info">
+                                <h5>Alquileres & Contratos</h5>
+                                <p>Control de contratos activos, fechas de entrega, retiros programados, prórrogas y remitos oficiales.</p>
+                                <span class="dash-solapa-link">Ir a Alquileres →</span>
+                            </div>
+                        </div>
+
+                        <!-- Solapa 3: Mantenimiento y Taller -->
+                        <div class="dash-solapa-card" onclick="switchView('mantenimiento')">
+                            <div class="dash-solapa-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+                                <i class="fas fa-tools"></i>
+                            </div>
+                            <div class="dash-solapa-info">
+                                <h5>Mantenimiento & Taller</h5>
+                                <p>Tablero técnico con checklist de tareas, reparaciones pendientes y reincorporación a base.</p>
+                                <span class="dash-solapa-link">Ir al Taller →</span>
+                            </div>
+                        </div>
+
+                        <!-- Solapa 4: Mapa de Obras -->
+                        <div class="dash-solapa-card" onclick="switchView('mapa')">
+                            <div class="dash-solapa-icon" style="background: rgba(243, 178, 41, 0.15); color: #F3B229;">
+                                <i class="fas fa-map-marked-alt"></i>
+                            </div>
+                            <div class="dash-solapa-info">
+                                <h5>Mapa de Obras en Vivo</h5>
+                                <p>Cartografía geográfica interactiva del Depósito Central Sarandí y obras activas en todo el país.</p>
+                                <span class="dash-solapa-link">Abrir Mapa Completo →</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- ================= VISTA 2: FLOTA DE CONTENEDORES ORGANIZADA POR SOLAPAS ================= -->
+            <section id="view-flota" class="view-section" style="display: none;">
+                <!-- Header de Flota -->
+                <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button class="btn btn-secondary btn-sm" onclick="switchView('dashboard')" style="font-weight: bold; color: #38bdf8; border-color: rgba(56,189,248,0.4);">
+                            <i class="fas fa-arrow-left"></i> Volver al Tablero
+                        </button>
+                        <div>
+                            <h3 style="margin: 0; font-size: 17px; color: var(--warning); display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-boxes-stacked"></i> Flota de Contenedores
+                            </h3>
+                            <span style="font-size: 11.5px; color: #94a3b8;">50 unidades organizadas por solapa de modelo y estado operativo</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn btn-warning btn-sm" onclick="abrirModalNuevoContenedor()">
+                            <i class="fas fa-plus-circle"></i> + Alta Contenedor
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="abrirModalAsignarAlquilerDashboard()">
+                            <i class="fas fa-handshake"></i> ⚡ Asignar Alquiler
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="exportarContenedoresExcel()" title="Descargar Planilla Excel">
+                            <i class="fas fa-file-excel" style="color: #10b981;"></i> Excel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SOLAPAS PRINCIPALES POR MODELO / TIPO DE CONTENEDOR -->
+                <div class="solapas-contenedores-bar">
+                    <button id="tab-tipo-todos" class="solapa-cont-btn active" onclick="setFilterTipo('todos')">
+                        <i class="fas fa-cubes"></i> Todas las Unidades <span id="badge-tipo-todos" class="solapa-badge">50</span>
+                    </button>
+                    <button id="tab-tipo-oficina" class="solapa-cont-btn" onclick="setFilterTipo('oficina')">
+                        <i class="fas fa-briefcase"></i> Oficinas <span id="badge-tipo-oficina" class="solapa-badge">12</span>
+                    </button>
+                    <button id="tab-tipo-panol" class="solapa-cont-btn" onclick="setFilterTipo('pañol')">
+                        <i class="fas fa-tools"></i> Pañoles <span id="badge-tipo-panol" class="solapa-badge">20</span>
+                    </button>
+                    <button id="tab-tipo-comedor" class="solapa-cont-btn" onclick="setFilterTipo('comedor')">
+                        <i class="fas fa-utensils"></i> Comedores <span id="badge-tipo-comedor" class="solapa-badge">18</span>
+                    </button>
+                    <button id="tab-tipo-vestuario" class="solapa-cont-btn" onclick="setFilterTipo('vestuario')">
+                        <i class="fas fa-shower"></i> Vestuarios <span id="badge-tipo-vestuario" class="solapa-badge">0</span>
+                    </button>
+                </div>
+
+                <!-- Barra de Sub-filtros por Estado y Buscador -->
+                <div class="toolbar">
+                    <div class="filter-chips-group">
+                        <span style="font-size: 11px; font-weight: 700; color: #94a3b8; margin-right: 2px;">ESTADO:</span>
+                        <button id="chip-estado-todos" class="chip-btn chip-estado active" onclick="setFilterEstado('todos')">
+                            Todos <span id="chip-count-todos" class="chip-badge">50</span>
+                        </button>
+                        <button id="chip-estado-empresa" class="chip-btn chip-estado" onclick="setFilterEstado('empresa')">
+                            <span class="pulse-dot pulse-green"></span> En Base <span id="chip-count-empresa" class="chip-badge">11</span>
+                        </button>
+                        <button id="chip-estado-alquilado" class="chip-btn chip-estado" onclick="setFilterEstado('alquilado')">
+                            <i class="fas fa-truck-loading" style="font-size: 10px;"></i> Alquilados <span id="chip-count-alquilado" class="chip-badge">29</span>
+                        </button>
+                        <button id="chip-estado-reservado" class="chip-btn chip-estado" onclick="setFilterEstado('reservado')">
+                            <i class="fas fa-clock" style="font-size: 10px;"></i> Reservados <span id="chip-count-reservado" class="chip-badge">5</span>
+                        </button>
+                        <button id="chip-estado-reparacion" class="chip-btn chip-estado" onclick="setFilterEstado('reparacion')">
+                            <i class="fas fa-tools" style="font-size: 10px;"></i> En Taller <span id="chip-count-reparacion" class="chip-badge">5</span>
+                        </button>
+                    </div>
+
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="flota-search-input" placeholder="Buscar por N°, cliente u obra..." oninput="onSearchInput(this.value)">
+                    </div>
+                </div>
+
+                <!-- Indicador resumen de solapa activa -->
+                <div id="flota-solapa-summary" style="margin-bottom: 8px; font-size: 11.5px; color: #38bdf8; display: flex; align-items: center; justify-content: space-between;">
+                    <span id="flota-solapa-summary-text"><i class="fas fa-info-circle"></i> Mostrando todas las unidades de la flota</span>
+                    <button class="btn btn-secondary btn-sm" id="btn-reset-flota-filters" onclick="resetFlotaFilters()" style="padding: 2px 8px; font-size: 10px; display: none;">
+                        <i class="fas fa-undo"></i> Restablecer filtros
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>CÓDIGO</th>
+                                <th>TIPO</th>
+                                <th>MEDIDA</th>
+                                <th>ESTADO</th>
+                                <th>PAGO</th>
+                                <th>CLIENTE / UBICACIÓN</th>
+                                <th>MANTENIMIENTO</th>
+                                <th>ACCIONES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="flota-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ================= VISTA 3: ALQUILERES & CONTRATOS ================= -->
+            <section id="view-alquileres" class="view-section" style="display: none;">
+                <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button class="btn btn-secondary btn-sm" onclick="switchView('dashboard')" style="font-weight: bold; color: #38bdf8; border-color: rgba(56,189,248,0.4);">
+                            <i class="fas fa-arrow-left"></i> Volver
+                        </button>
+                        <h4 style="margin: 0; font-size: 15px; color: var(--warning); display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-file-contract"></i> Control de Contratos y Vencimientos de Alquiler
+                        </h4>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="abrirModalAlquiler()">
+                        <i class="fas fa-plus-circle"></i> + Asignar Nuevo Alquiler
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>CÓDIGO</th>
+                                <th>TIPO</th>
+                                <th>CLIENTE</th>
+                                <th>OBRA / UBICACIÓN</th>
+                                <th>ENTREGA</th>
+                                <th>RETIRO PROG.</th>
+                                <th>VENCIMIENTO</th>
+                                <th>ACCIONES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alquileres-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ================= VISTA 4: MANTENIMIENTO & TALLER ================= -->
+            <section id="view-mantenimiento" class="view-section" style="display: none;">
+                <div style="margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button class="btn btn-secondary btn-sm" onclick="switchView('dashboard')" style="font-weight: bold; color: #38bdf8; border-color: rgba(56,189,248,0.4);">
+                            <i class="fas fa-arrow-left"></i> Volver al Tablero
+                        </button>
+                        <h4 style="margin: 0; font-size: 15px; color: var(--warning); display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-tools"></i> Tablero de Mantenimiento y Reparaciones de Flota
+                        </h4>
+                    </div>
+                </div>
+                <div id="mantenimiento-cards-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;"></div>
+            </section>
+
+                        <!-- ================= VISTA 5: MAPA DE OBRAS ================= -->
+            <section id="view-mapa" class="view-section" style="display: none;">
+                <div class="glass-card" style="margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <button class="btn btn-secondary btn-sm" onclick="switchView('dashboard')" style="font-weight: bold; color: #38bdf8; border-color: rgba(56,189,248,0.4);">
+                                <i class="fas fa-arrow-left"></i> Volver al Tablero
+                            </button>
+                            <div>
+                                <h4 style="margin: 0; font-size: 15px; color: var(--warning); display: flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-map-marked-alt"></i> Cartografía y Monitoreo Geográfico de Flota
+                                </h4>
+                                <span style="font-size: 11.5px; color: #94a3b8;">Visualización de unidades en Depósito Central Sarandí y obras activas en todo el país</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-secondary btn-sm" onclick="centrarMapaEnSarandi()">
+                                <i class="fas fa-warehouse" style="color: #10b981;"></i> Base Sarandí
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="ajustarZoomTodaFlota()">
+                                <i class="fas fa-expand"></i> Ver Toda la Flota
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="abrirModalAsignarAlquilerDashboard()">
+                                <i class="fas fa-handshake"></i> + Asignar Alquiler
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div id="map-container"></div>
+            </section>
+
+            <!-- ================= VISTA 6: CONFIGURACIÓN ================= -->
+            <section id="view-configuracion" class="view-section" style="display: none;">
+                <div style="margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button class="btn btn-secondary btn-sm" onclick="switchView('dashboard')" style="font-weight: bold; color: #38bdf8; border-color: rgba(56,189,248,0.4);">
+                            <i class="fas fa-arrow-left"></i> Volver al Tablero
+                        </button>
+                        <div>
+                            <h3 style="margin: 0; font-size: 17px; color: var(--warning); display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-cog"></i> Configuración del Sistema
+                            </h3>
+                            <p style="font-size: 11.5px; color: #94a3b8; margin: 0;">Administre usuarios, datos de la empresa y copias de seguridad.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subtabs de Configuración -->
+                <div class="subtabs-bar">
+                    <button id="config-subtab-usuarios" class="subtab-btn config-subtab-btn active" onclick="switchConfigSubTab('usuarios')">
+                        <i class="fas fa-users-cog"></i> 1. Usuarios y Accesos
+                    </button>
+                    <button id="config-subtab-parametros" class="subtab-btn config-subtab-btn" onclick="switchConfigSubTab('parametros')">
+                        <i class="fas fa-building"></i> 2. Datos de Empresa & Depósito
+                    </button>
+                    <button id="config-subtab-backups" class="subtab-btn config-subtab-btn" onclick="switchConfigSubTab('backups')">
+                        <i class="fas fa-database"></i> 3. Respaldos & Base de Datos
+                    </button>
+                </div>
+
+                <!-- Subpane 1: Usuarios -->
+                <div id="config-pane-usuarios" class="config-subtab-pane">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="margin: 0; font-size: 14px; color: #ffffff;">Usuarios Autorizados</h4>
+                        <button class="btn btn-primary btn-sm" onclick="abrirModalNuevoUsuario()">
+                            <i class="fas fa-user-plus"></i> + Nuevo Usuario
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>USUARIO</th>
+                                    <th>NOMBRE / DESCRIPCIÓN</th>
+                                    <th>EMAIL</th>
+                                    <th>ROL</th>
+                                    <th>ACCIONES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="config-usuarios-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Subpane 2: Parámetros -->
+                <div id="config-pane-parametros" class="config-subtab-pane" style="display: none;">
+                    <div class="glass-card" style="max-width: 700px;">
+                        <form onsubmit="guardarParametrosEmpresa(event)">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Razón Social</label>
+                                    <input type="text" id="cfg-empresa" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>C.U.I.T.</label>
+                                    <input type="text" id="cfg-cuit" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Condición I.V.A.</label>
+                                    <input type="text" id="cfg-iva">
+                                </div>
+                                <div class="form-group">
+                                    <label>Depósito Principal</label>
+                                    <input type="text" id="cfg-deposito">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Dirección del Depósito / Base</label>
+                                <input type="text" id="cfg-direccion">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Email de Notificaciones</label>
+                                    <input type="email" id="cfg-email">
+                                </div>
+                                <div class="form-group">
+                                    <label>Teléfono</label>
+                                    <input type="text" id="cfg-telefono">
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                                <button type="submit" class="btn btn-primary">Guardar Parámetros</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Subpane 3: Backups -->
+                <div id="config-pane-backups" class="config-subtab-pane" style="display: none;">
+                    <div class="glass-card" style="max-width: 600px;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 14px; color: var(--warning);">Copias de Seguridad y Datos</h4>
+                        <p style="font-size: 12px; color: #94a3b8; margin-bottom: 14px;">Descargue un archivo de respaldo con toda la flota, contratos, usuarios y configuraciones para resguardo externo.</p>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <button class="btn btn-primary" onclick="exportarBackupJSON()">
+                                <i class="fas fa-download"></i> Descargar Backup Completo (JSON)
+                            </button>
+                            <button class="btn btn-danger" onclick="restaurarDatosOriginales()">
+                                <i class="fas fa-undo"></i> Restaurar los 50 Contenedores Originales
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ================= TORRE DE CONTROL & LIVE FEED OPERATIVO ================= -->
+    <div id="drawer-backdrop" onclick="toggleTorreControl(false)"></div>
+
+    <aside id="drawer-torre-control" class="torre-control-drawer">
+        <!-- Header del Drawer -->
+        <div class="torre-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="torre-header-icon">
+                    <i class="fas fa-tower-broadcast" style="color: #38bdf8;"></i>
+                </div>
+                <div>
+                    <h4 style="margin: 0; font-size: 14px; color: #ffffff; display: flex; align-items: center; gap: 6px;">
+                        Torre de Control <span class="badge-estado badge-alquilado" style="font-size: 9px; padding: 2px 5px;">EN VIVO</span>
+                    </h4>
+                    <span style="font-size: 10.5px; color: #94a3b8;">Centro operativo y colaboración de flota</span>
+                </div>
+            </div>
+            <button class="modal-close" onclick="toggleTorreControl(false)" style="color: #cbd5e1;">✕</button>
+        </div>
+
+        <!-- Subtabs de la Torre -->
+        <div class="torre-subtabs-bar">
+            <button id="torre-tab-feed" class="torre-subtab-btn active" onclick="switchTorreTab('feed')">
+                <i class="fas fa-stream"></i> Novedades Flota
+            </button>
+            <button id="torre-tab-pings" class="torre-subtab-btn" onclick="switchTorreTab('pings')">
+                <i class="fas fa-bullhorn"></i> Pings de Turno <span id="torre-pings-tab-count" class="solapa-badge" style="display: none; font-size: 9px; padding: 1px 5px;">0</span>
+            </button>
+            <button id="torre-tab-equipo" class="torre-subtab-btn" onclick="switchTorreTab('equipo')">
+                <i class="fas fa-user-clock"></i> Operadores
+            </button>
+        </div>
+
+        <!-- Panel 1: Live Operational Feed -->
+        <div id="torre-pane-feed" class="torre-pane active">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">
+                    <i class="fas fa-clock"></i> Registro de Actividad en Vivo:
+                </span>
+                <button class="btn btn-secondary btn-sm" onclick="limpiarBitacoraEventos()" style="padding: 1px 6px; font-size: 10px;" title="Limpiar historial antiguo">
+                    Limpiar
+                </button>
+            </div>
+            <div id="torre-live-events-list" class="torre-events-container">
+                <!-- Eventos inyectados dinámicamente -->
+            </div>
+        </div>
+
+        <!-- Panel 2: Pings & Avisos de Turno -->
+        <div id="torre-pane-pings" class="torre-pane" style="display: none;">
+            <!-- Formulario para emitir nuevo Ping o Audio de Despacho -->
+            <form onsubmit="publicarNuevoPing(event)" class="torre-ping-form">
+                <div style="margin-bottom: 6px;">
+                    <textarea id="ping-input-text" rows="2" placeholder="Publicar aviso, despacho urgente o mención (@C-101)..."></textarea>
+                </div>
+                
+                <!-- Barra activa mientras se graba un audio de voz -->
+                <div id="ping-recording-bar" class="audio-recorder-bar" style="display: none;">
+                    <div class="rec-pulse-dot"></div>
+                    <span style="font-weight: 700; color: #ef4444; font-size: 11.5px;">GRABANDO MENSAJE DE VOZ...</span>
+                    <span id="ping-rec-timer" style="font-family: monospace; font-size: 12px; color: #ffffff; margin-left: auto;">00:00</span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="cancelarGrabacionAudio()" style="padding: 2px 6px; font-size: 10px;" title="Descartar">✕</button>
+                    <button type="button" class="btn btn-success btn-sm" onclick="finalizarYEnviarAudio()" style="padding: 2px 8px; font-size: 11px; font-weight: bold;"><i class="fas fa-check"></i> Enviar</button>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
+                    <select id="ping-input-categoria" style="padding: 4px 8px; font-size: 11px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.15); background: #0f172a; color: #fff;">
+                        <option value="info">ℹ️ Información</option>
+                        <option value="urgente">⚡ Urgente</option>
+                        <option value="despacho">🚚 Despacho</option>
+                        <option value="taller">🔧 Taller</option>
+                    </select>
+
+                    <div style="display: flex; gap: 6px;">
+                        <button type="button" id="btn-record-ping-audio" class="btn btn-secondary btn-sm" onclick="iniciarGrabacionAudio()" style="border-color: rgba(239, 68, 68, 0.5); color: #f87171;" title="Grabar audio de despacho">
+                            <i class="fas fa-microphone"></i> Audio
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-sm" style="font-weight: bold;">
+                            <i class="fas fa-paper-plane"></i> Enviar
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0 6px 0;">
+                <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">
+                    <i class="fas fa-bullhorn"></i> Muro de Pings y Novedades:
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="probarAltavozSistema()" style="font-size: 10.5px; padding: 2px 7px; border-color: rgba(56, 189, 248, 0.4); color: #38bdf8;" title="Verificar que el altavoz del equipo suena">
+                    <i class="fas fa-volume-up"></i> Probar Sonido
+                </button>
+            </div>
+            <div id="torre-pings-list" class="torre-events-container">
+                <!-- Pings inyectados dinámicamente -->
+            </div>
+        </div>
+
+        <!-- Panel 3: Operadores & Presencia Detallada -->
+        <div id="torre-pane-equipo" class="torre-pane" style="display: none;">
+            <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px;">
+                <i class="fas fa-users-viewfinder"></i> Actividad del Equipo en Tiempo Real:
+            </div>
+            <div id="torre-equipo-list" class="torre-events-container">
+                <!-- Inyectado dinámicamente -->
+            </div>
+        </div>
+    </aside>
+
+    <!-- ================= MODALES ================= -->
+
+    <!-- Modal: Formulario Alta / Edición de Contenedor -->
+        <!-- Modal: Asignar Nuevo Alquiler / Contrato -->
+    <div id="modal-alquiler" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 id="modal-alquiler-title"><i class="fas fa-handshake" style="color: var(--warning);"></i> Asignar Contrato de Alquiler</h4>
+                <button class="modal-close" onclick="cerrarModales()">✕</button>
+            </div>
+            <form onsubmit="guardarAlquilerForm(event)">
+                <input type="hidden" id="alquiler-form-code-hidden">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1.5;">
+                        <label>Contenedor a Asignar *</label>
+                        <select id="alquiler-form-code" onchange="onAlquilerSelectContainer(this.value)" required>
+                            <!-- Opciones cargadas dinámicamente -->
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Tipo & Medida</label>
+                        <input type="text" id="alquiler-form-tipo-medida" readonly style="background: rgba(0,0,0,0.3); color: #38bdf8; font-weight: bold; border-color: rgba(56, 189, 248, 0.3);">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Cliente / Razón Social Contratista *</label>
+                        <input type="text" id="alquiler-form-cliente" required placeholder="Ej: Techint, YPF, Benito Roggio...">
+                    </div>
+                    <div class="form-group">
+                        <label>Ubicación / Obra / Destino *</label>
+                        <input type="text" id="alquiler-form-ubicacion" required placeholder="Ej: Refinería La Plata, Vaca Muerta...">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Fecha de Entrega / Despacho *</label>
+                        <input type="date" id="alquiler-form-entrega" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha Estimada de Retiro / Vencimiento *</label>
+                        <input type="date" id="alquiler-form-retiro" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Monto Canon Mensual ($ ARS)</label>
+                        <input type="text" id="alquiler-form-monto" placeholder="Ej: $ 250.000">
+                    </div>
+                    <div class="form-group">
+                        <label>Estado de Cobranza Inicial</label>
+                        <select id="alquiler-form-pago">
+                            <option value="al_dia">Al Día</option>
+                            <option value="pendiente">Pendiente</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Observaciones de Entrega / Equipamiento</label>
+                    <textarea id="alquiler-form-obs" rows="2" placeholder="Ej: Entregado con 2 llaves, aire acondicionado split probado, tablero térmico OK."></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-check-circle"></i> Guardar Alquiler
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="guardarAlquilerYEmitirRemito(event)">
+                        <i class="fas fa-file-invoice"></i> Guardar y Emitir Remito PDF
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-contenedor-form" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 id="modal-form-title"><i class="fas fa-box"></i> Datos del Contenedor</h4>
+                <button class="modal-close" onclick="cerrarModales()">✕</button>
+            </div>
+            <form onsubmit="guardarContenedorForm(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Código de Unidad</label>
+                        <input type="text" id="form-cont-code" required placeholder="Ej: C-101">
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de Contenedor</label>
+                        <select id="form-cont-tipo">
+                            <option value="Oficina">Oficina</option>
+                            <option value="Pañol">Pañol</option>
+                            <option value="Comedor">Comedor</option>
+                            <option value="Vestuario">Vestuario</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Medida</label>
+                        <select id="form-cont-medida">
+                            <option value="10'">10' Pies</option>
+                            <option value="20'">20' Pies</option>
+                            <option value="40'">40' Pies</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Estado Operativo</label>
+                        <select id="form-cont-estado">
+                            <option value="empresa">En Base (Disponible)</option>
+                            <option value="alquilado">Alquilado en Obra</option>
+                            <option value="reservado">Reservado</option>
+                            <option value="reparacion">En Taller / Reparación</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Estado de Cobranza</label>
+                        <select id="form-cont-pago">
+                            <option value="al_dia">Al Día</option>
+                            <option value="retrasado">Retrasado</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Cliente / Empresa</label>
+                        <input type="text" id="form-cont-cliente" placeholder="Ej: Cargill SACI, Techint, etc.">
+                    </div>
+                    <div class="form-group">
+                        <label>Ubicación / Obra</label>
+                        <input type="text" id="form-cont-ubicacion" placeholder="Ej: Av. Calchaquí 5600, Quilmes">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Fecha de Entrega</label>
+                        <input type="date" id="form-cont-entrega">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Retiro / Vencimiento</label>
+                        <input type="date" id="form-cont-retiro">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Observaciones de Entrega / Equipamiento</label>
+                    <textarea id="form-cont-obs" rows="2" placeholder="Ej: Entregado con 2 llaves, aire funcionando, piso sin marcas."></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px;">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Contenedor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Ficha Técnica -->
+    <div id="modal-ficha-viewer" class="modal-overlay" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h4><i class="fas fa-info-circle"></i> Ficha Técnica de la Unidad</h4>
+                <button class="modal-close" onclick="cerrarModales()">✕</button>
+            </div>
+            <div id="ficha-viewer-body"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Prórroga de Alquiler -->
+    <div id="modal-prorroga" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h4><i class="fas fa-hourglass-half"></i> Prórroga de Contrato</h4>
+                <button class="modal-close" onclick="cerrarModales()">✕</button>
+            </div>
+            <input type="hidden" id="prorroga-code">
+            <div class="form-group">
+                <label>Fecha de Retiro Actual</label>
+                <input type="date" id="prorroga-actual" disabled style="opacity: 0.7;">
+            </div>
+            <div class="form-group">
+                <label>Nueva Fecha de Retiro / Vencimiento</label>
+                <input type="date" id="prorroga-nueva" required>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px;">
+                <button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+                <button class="btn btn-warning" onclick="guardarProrroga()">Confirmar Prórroga</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Mantenimiento -->
+    <div id="modal-mantenimiento-form" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header">
+                <h4 id="mant-title"><i class="fas fa-tools"></i> Mantenimiento</h4>
+                <button class="modal-close" onclick="cerrarModales()">✕</button>
+            </div>
+            <input type="hidden" id="mant-code">
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 11px; font-weight: bold; color: #94a3b8;">Tareas Actuales:</label>
+                <div id="mant-lista-actual" style="margin-top: 6px;"></div>
+            </div>
+            <div class="form-group">
+                <label>Nueva Tarea de Reparación / Mantenimiento</label>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="mant-nueva-tarea" placeholder="Ej: Sellar filtración de techo, pintura...">
+                    <button type="button" class="btn btn-primary" onclick="agregarTareaMantenimiento()">Agregar</button>
+                </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+                <button class="btn btn-secondary" onclick="cerrarModales()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Usuario Form -->
+    <div id="modal-usuario-form" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h4><i class="fas fa-user-shield"></i> Credencial de Usuario</h4>
+                <button class="modal-close" onclick="cerrarModales()">✕</button>
+            </div>
+            <form onsubmit="guardarUsuarioForm(event)">
+                <input type="hidden" id="user-form-id">
+                <div class="form-group">
+                    <label>Usuario (Login)</label>
+                    <input type="text" id="user-form-username" required placeholder="Ej: melani, juan, etc.">
+                </div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="user-form-password" placeholder="••••••••">
+                </div>
+                <div class="form-group">
+                    <label>Nombre y Apellido</label>
+                    <input type="text" id="user-form-nombre" placeholder="Ej: Melani Grandi">
+                </div>
+                <div class="form-group">
+                    <label>Correo Electrónico</label>
+                    <input type="email" id="user-form-email" placeholder="usuario@sgmontajes.com.ar">
+                </div>
+                <div class="form-group">
+                    <label>Rol de Usuario</label>
+                    <select id="user-form-role">
+                        <option value="Administrador">Administrador (Total)</option>
+                        <option value="Operador Logística">Operador Logística</option>
+                        <option value="Consulta">Solo Lectura / Consulta</option>
+                    </select>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px;">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Visor y Descarga de Remito PDF -->
+    <div id="modal-remito-viewer" class="modal-overlay" style="display: none;">
+        <div class="modal-content modal-large" style="background: #1e293b;">
+            <div class="modal-header">
+                <h4><i class="fas fa-file-invoice"></i> Remito Oficial SG MONTAJES SRL</h4>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-success btn-sm" onclick="descargarRemitoPDF()">
+                        <i class="fas fa-download"></i> Descargar PDF
+                    </button>
+                    <button class="modal-close" onclick="cerrarModales()">✕</button>
+                </div>
+            </div>
+            <div id="remito-viewer-body" style="background: #ffffff; border-radius: 6px; padding: 10px; overflow-y: auto; max-height: 75vh;"></div>
+        </div>
+    </div>
+
+    <!-- ================= SISTEMA DE LLAMADAS EN VIVO (WEBRTC) ================= -->
+    <!-- Modal: Llamada Entrante -->
+    <div id="modal-incoming-call" class="modal-overlay" style="display: none; z-index: 9999999;">
+        <div class="modal-content" style="max-width: 380px; text-align: center; padding: 24px; border: 2px solid #10b981; box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; margin: 0 auto 14px auto; display: flex; align-items: center; justify-content: center; font-size: 26px; color: #10b981;">
+                <i class="fas fa-phone-volume fa-shake"></i>
+            </div>
+            <h3 style="margin: 0 0 6px 0; color: #ffffff; font-size: 18px;">Llamada de Base en Vivo</h3>
+            <p style="color: #94a3b8; font-size: 13px; margin-bottom: 20px;">
+                <strong id="incoming-caller-name" style="color: #38bdf8; font-size: 15px;">Operador</strong> se está comunicando por voz.
+            </p>
+            <div style="display: flex; justify-content: center; gap: 14px;">
+                <button type="button" class="btn btn-danger" onclick="rechazarLlamadaEntrante()" style="padding: 10px 20px; font-weight: bold; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-phone-slash"></i> Rechazar
+                </button>
+                <button type="button" class="btn btn-success" onclick="atenderLlamadaEntrante()" style="padding: 10px 24px; font-weight: bold; display: flex; align-items: center; gap: 6px; box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);">
+                    <i class="fas fa-phone"></i> Atender
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Llamando (Saliente) -->
+    <div id="modal-outgoing-call" class="modal-overlay" style="display: none; z-index: 9999999;">
+        <div class="modal-content" style="max-width: 360px; text-align: center; padding: 24px; border: 1px solid #38bdf8;">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(56, 189, 248, 0.2); border: 2px solid #38bdf8; margin: 0 auto 14px auto; display: flex; align-items: center; justify-content: center; font-size: 26px; color: #38bdf8;">
+                <i class="fas fa-satellite-dish fa-spin"></i>
+            </div>
+            <h3 style="margin: 0 0 6px 0; color: #ffffff; font-size: 17px;">Llamando a Operador...</h3>
+            <p style="color: #94a3b8; font-size: 13px; margin-bottom: 20px;">
+                Conectando con <strong id="outgoing-target-name" style="color: #38bdf8;">Operador</strong>
+            </p>
+            <button type="button" class="btn btn-danger btn-sm" onclick="cancelarLlamadaSaliente()" style="padding: 8px 18px; font-weight: bold;">
+                <i class="fas fa-phone-slash"></i> Cancelar
+            </button>
+        </div>
+    </div>
+
+    <!-- Widget Flotante de Llamada Activa (Minimizada durante el trabajo) -->
+    <div id="active-call-floating-bar" style="display: none;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="rec-pulse-dot" style="background: #10b981; box-shadow: 0 0 8px #10b981;"></span>
+            <div>
+                <div style="font-size: 12px; font-weight: bold; color: #ffffff;">En llamada con <span id="call-active-peer-name" style="color: #38bdf8;">Operador</span></div>
+                <div id="call-duration-timer" style="font-size: 11px; color: #94a3b8; font-family: monospace;">00:00</div>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-left: 10px;">
+            <button type="button" id="btn-call-mute" class="btn btn-secondary btn-sm" onclick="toggleMuteCallMic()" style="padding: 4px 8px; font-size: 11px;" title="Silenciar micrófono">
+                <i class="fas fa-microphone"></i>
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="finalizarLlamadaActiva()" style="padding: 4px 10px; font-size: 11px; font-weight: bold;" title="Cortar comunicación">
+                <i class="fas fa-phone-slash"></i> Cortar
+            </button>
+        </div>
+    </div>
+
+    <!-- Elemento Audio para transmisión WebRTC (posicionado fuera de pantalla sin display:none para permitir render de coreaudio en macOS Safari) -->
+    <audio id="remote-call-audio" autoplay playsinline style="position: fixed; top: -100px; left: -100px; width: 1px; height: 1px; opacity: 0.001; pointer-events: none; z-index: -999;"></audio>
+    <script src="contenedores_db.js?v=120"></script>
+    <script src="supabase_config.js?v=120"></script>
+    <script src="remitos_generator.js?v=120"></script>
+    <script src="app.js?v=120"></script>
+</body>
+</html>

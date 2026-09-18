@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual de Uso Oficial del Sistema — SG MONTAJES SRL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --primary: #00529F;
+            --primary-dark: #003D78;
+            --warning: #F3B229;
+            --warning-dark: #D09315;
+            --dark: #0f172a;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: "Inter", system-ui, -apple-system, sans-serif;
+            background: #f8fafc;
+            color: var(--text);
+            line-height: 1.6;
+            padding: 24px 16px;
+        }
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #ffffff;
+            padding: 28px 36px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid var(--warning);
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .header-left img {
+            height: 44px;
+            width: auto;
+            object-fit: contain;
+        }
+        .header-title {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+        .header-title span { color: var(--warning); }
+        .header-sub {
+            font-size: 12.5px;
+            color: #93c5fd;
+            margin-top: 2px;
+        }
+        .btn-pdf {
+            background: var(--warning);
+            color: #0f172a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(243, 178, 41, 0.3);
+            transition: all 0.2s ease;
+        }
+        .btn-pdf:hover {
+            background: var(--warning-dark);
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+        .content {
+            padding: 36px;
+        }
+        .section {
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .section-title i {
+            color: var(--warning-dark);
+            font-size: 18px;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 14px;
+            margin-top: 12px;
+        }
+        .feature-card {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 16px;
+            font-size: 12.5px;
+        }
+        .feature-card strong {
+            display: block;
+            font-size: 13px;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #e0f2fe; color: #075985; }
+        .badge-yellow { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #ffe4e6; color: #9f1239; }
+
+        .step-list {
+            margin-left: 20px;
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 14px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #1e3a8a;
+            margin: 14px 0;
+        }
+        .footer {
+            background: #0f172a;
+            color: #ffffff;
+            padding: 24px 36px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 12px;
+        }
+        .footer-brand strong { color: var(--warning); }
+        @media print {
+            body { padding: 0; background: #ffffff; }
+            .container { box-shadow: none; border: none; }
+            .btn-pdf { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="manual-document-container">
+        
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <img src="logo_sg_montajes.png" alt="SG MONTAJES">
+                <div>
+                    <div class="header-title">SG <span>MONTAJES</span> — Manual de Usuario</div>
+                    <div class="header-sub">Sistema de Gestión de Flota, Contratos de Alquiler y Remitos Oficiales</div>
+                </div>
+            </div>
+            <div>
+                <button class="btn-pdf" onclick="descargarManualPDF()">
+                    <i class="fas fa-file-pdf"></i> Descargar Manual PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+
+            <div class="info-box">
+                <strong><i class="fas fa-desktop"></i> Plataforma de Gestión Integral:</strong><br>
+                Este manual describe paso a paso todas las funciones del sistema de contenedores: control de las 50 unidades, asignación de alquileres, seguimiento de vencimientos, taller de mantenimiento, mapa de obras y emisión de remitos oficiales en PDF.
+            </div>
+
+            <!-- 1. Acceso al Sistema -->
+            <div class="section">
+                <div class="section-title">
+                    <i class="fas fa-key"></i> 1. Acceso y Autenticación
+                </div>
+                <p style="font-size: 13px; color: #475569;">
+                    Para ingresar al sistema abra el archivo <code>index.html</code> en su navegador:
+                </p>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <strong>Usuario Predeterminado</strong>
+                        <code>melani</code>
+                    </div>
+                    <div class="feature-card">
+                        <strong>Contraseña Predeterminada</strong>
+                        <code>123</code>
+                    </div>
+                    <div class="feature-card">
+                        <strong>Ingreso Rápido</strong>
+                        Haga clic en <strong>"Ingresar al Sistema"</strong> o pulse <strong>Enter</strong>.
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Tablero Principal (Dashboard) -->
+            <div class="section">
+                <div class="section-title">
+                    <i class="fas fa-chart-pie"></i> 2. Tablero de Control & KPIs (Dashboard)
+                </div>
+                <p style="font-size: 13px; color: #475569; margin-bottom: 10px;">
+                    El Dashboard centraliza las métricas en tiempo real de la compañía:
+                </p>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <strong>Barra de Acciones Rápidas</strong>
+                        Acceso a <code>+ Alta Contenedor</code>, <code>⚡ Asignar Alquiler</code>, <code>🗺️ Mapa</code> y <code>📥 Exportar Excel</code>.
+                    </div>
+                    <div class="feature-card">
+                        <strong>6 Tarjetas de KPIs</strong>
+                        Flota Total (50), Alquilados en Obra (% Ocupación), Disponibles en Base, Reservados, En Taller y Vencimientos.
+                    </div>
+                    <div class="feature-card">
+                        <strong>Ocupación por Modelo</strong>
+                        Barras de porcentaje de unidades alquiladas vs libres por tipo (Oficina, Pañol, Vestuario, Comedor).
+                    </div>
+                    <div class="feature-card">
+                        <strong>Alertas de Contratos</strong>
+                        Listado automático clasificado por urgencia: días vencidos (rojo) o por vencer a 7 días (ámbar).
+                    </div>
+                    <div class="feature-card">
+                        <strong>Rendimiento Financiero</strong>
+                        Cálculo de facturación mensual estimada y ranking de obras principales (Techint, YPF, AUSA, CABA).
+                    </div>
+                    <div class="feature-card">
+                        <strong>Tabla de Flota Rápida</strong>
+                        Buscador y selector de fichas (Todos, Alquilados, En Base, En Taller) con accesos a Ficha y Remito.
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Flota Completa -->
+            <div class="section">
+                <div class="section-title">
+                    <i class="fas fa-boxes-stacked"></i> 3. Gestión de Flota Completa (50 Unidades)
+                </div>
+                <p style="font-size: 13px; color: #475569;">
+                    En la solapa <strong>Flota Completa</strong> encontrará las 50 unidades (C-101 a C-150):
+                </p>
+                <ul class="step-list">
+                    <li><strong>Filtros por Estado:</strong> <span class="badge badge-blue">Alquilados</span>, <span class="badge badge-green">En Base</span>, <span class="badge badge-yellow">Reservados</span>, <span class="badge badge-red">En Taller</span>.</li>
+                    <li><strong>Búsqueda en Tiempo Real:</strong> Ingrese el código, cliente o dirección de obra en la barra superior.</li>
+                    <li><strong>Ficha Técnica (👁️):</strong> Visualice el historial completo, tareas de mantenimiento y coordenadas GPS.</li>
+                    <li><strong>Editar / Mover (✏️):</strong> Modifique dimensiones, tipo o cambie de estado la unidad.</li>
+                </ul>
+            </div>
+
+            <!-- 4. Asignación de Alquileres -->
+            <div class="section">
+                <div class="section-title">
+                    <i class="fas fa-handshake"></i> 4. Asignación de Alquileres y Contratos
+                </div>
+                <p style="font-size: 13px; color: #475569; margin-bottom: 10px;">
+                    Pasos para asignar un contenedor a un cliente:
+                </p>
+                <ol class="step-list" style="margin-left: 20px;">
+                    <li>Haga clic en <strong>"⚡ Asignar Alquiler"</strong> en el Dashboard o <strong>"Alquilar"</strong> en cualquier unidad libre.</li>
+                    <li>Seleccione el contenedor deseado (el selector indica automáticamente cuáles están <code>✓ DISPONIBLES EN BASE</code>).</li>
+                    <li>Complete los datos del <strong>Cliente / Razón Social</strong> y la <strong>Ubicación de la Obra</strong>.</li>
+                    <li>Las fechas de entrega (hoy) y retiro (a 30 días) se completan automáticamente.</li>
+                    <li>Haga clic en <strong>"Guardar Alquiler"</strong> o en <strong>"Guardar y Emitir Remito PDF"</strong> para generar el documento de entrega de inmediato.</li>
+                </ol>
+            </div>
+
+            <!-- 5. Mantenimiento y Taller -->
+            <div class="section">
+                <div class="section-title">
+                    <i class="fas fa-tools"></i> 5. Mantenimiento Técnico & Taller
+                </div>
+                <p style="font-size: 13px; color: #475569; margin-bottom: 10px;">
+                    Solapa diseñada para el control técnico y acondicionamiento de módulos:
+                </p>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <strong>Tablero de Tareas</strong>
+                        Cada contenedor averiado muestra su lista de trabajos pendientes (cerradura, instalación eléctrica, pintura, aire).
+                    </div>
+                    <div class="feature-card">
+                        <strong>Completar Tareas</strong>
+                        Haga clic en el checklist para marcar tareas finalizadas.
+                    </div>
+                    <div class="feature-card">
+                        <strong>Reintegrar a Base</strong>
+                        Al finalizar las tareas, pulse <strong>"Pasar a Base (Disponible)"</strong> para habilitarlo nuevamente a la flota alquilable.
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. Mapa de Obras -->
+            <div class="section">
+                <div class="section-title">
+                    <i class="fas fa-map-marked-alt"></i> 6. Mapa Geográfico de Obras
+                </div>
+                <p style="font-size: 13px; color: #475569;">
+                    Permite ver la distribución geográfica de todos los contenedores en tiempo real. Incluye marcador especial para el <strong>Depósito Central Sarandí</strong> y pines en cada una de las obras activas con apertura directa de fichas técnicas.
+                </p>
+            </div>
+
+            <!-- 7. Remitos Oficiales en PDF -->
+            <div class="section">
+                <div class="section-title">
+                    <i class="fas fa-file-invoice"></i> 7. Emisión de Remitos Oficiales en PDF
+                </div>
+                <p style="font-size: 13px; color: #475569; margin-bottom: 10px;">
+                    El sistema cuenta con un generador automático de comprobantes con validez operativa:
+                </p>
+                <ul class="step-list">
+                    <li><strong>Remito de Entrega:</strong> Constatación de entrega, estado de llaves, aire acondicionado y firmas de recepción.</li>
+                    <li><strong>Remito de Retiro:</strong> Constatación de devolución, estado general de la unidad al finalizar el contrato.</li>
+                    <li><strong>Descarga Inmediata:</strong> Generación en PDF con diseño membretado SG Montajes listo para imprimir o enviar por WhatsApp/Mail.</li>
+                </ul>
+            </div>
+
+            <!-- 8. Configuración y Respaldos -->
+            <div class="section">
+                <div class="section-title">
+                    <i class="fas fa-cog"></i> 8. Configuración, Usuarios y Copias de Seguridad
+                </div>
+                <p style="font-size: 13px; color: #475569;">
+                    En la solapa <strong>Configuración</strong> puede:
+                </p>
+                <ul class="step-list">
+                    <li><strong>Administrar Usuarios:</strong> Crear usuarios, asignar contraseñas y definir roles (Administrador, Logística, Consulta).</li>
+                    <li><strong>Datos de Empresa:</strong> Actualizar CUIT, dirección del depósito y teléfonos de contacto.</li>
+                    <li><strong>Copias de Seguridad (JSON):</strong> Exportar o restaurar la base de datos completa con un solo clic.</li>
+                </ul>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-brand">
+                <strong>SG MONTAJES S.R.L.</strong> • CUIT 30-71602466-7<br>
+                <span>Av. Mitre 3400, Sarandí, Avellaneda, Buenos Aires</span>
+            </div>
+            <div style="text-align: right;">
+                <span>📧 cotizaciones@sgmontajes.com.ar</span><br>
+                <strong>📱 (0341) 5890126</strong>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function descargarManualPDF() {
+            const el = document.getElementById("manual-document-container");
+            const opt = {
+                margin: [6, 6, 6, 6],
+                filename: "Manual_de_Uso_Sistema_Contenedores_SG_Montajes.pdf",
+                image: { type: "jpeg", quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+            };
+            html2pdf().set(opt).from(el).save();
+        }
+    </script>
+</body>
+</html>
