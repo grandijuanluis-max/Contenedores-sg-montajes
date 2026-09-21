@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><title>Diagnóstico v2</title>
+<style>
+body { background:#0f172a; color:#e2e8f0; font-family:monospace; padding:20px; font-size:13px; }
+.error { color:#f87171; background:rgba(239,68,68,0.15); border:1px solid #f87171; padding:10px; border-radius:6px; margin:8px 0; }
+.ok { color:#34d399; }
+.warn { color:#fbbf24; }
+h2 { color:#38bdf8; }
+</style>
+</head>
+<body>
+<h2>🔍 Diagnóstico Directo</h2>
+<div id="out">⏳ Iniciando...<br></div>
+<script>
+var out = document.getElementById('out');
+function log(msg) { out.innerHTML += msg + '<br>'; }
+
+// Interceptar todos los errores con máximo detalle
+window.addEventListener('error', function(e) {
+  log('<div class="error">❌ ERROR:<br>' +
+      '<b>Mensaje:</b> ' + e.message + '<br>' +
+      '<b>Archivo:</b> ' + (e.filename || 'desconocido') + '<br>' +
+      '<b>Línea:</b> ' + e.lineno + ' — <b>Columna:</b> ' + e.colno + '<br>' +
+      (e.error ? '<b>Stack:</b><br><pre>' + e.error.stack + '</pre>' : '') +
+      '</div>');
+}, true); // useCapture=true para atrapar errores en scripts hijos
+
+log('Cargando contenedores_db.js...');
+</script>
+<script src="contenedores_db.js?v=d1" onload="log('<span class=ok>✅ contenedores_db.js OK</span>')" onerror="log('<div class=error>❌ contenedores_db.js no cargó</div>')"></script>
+<script>log('Cargando supabase_config.js...');</script>
+<script src="supabase_config.js?v=d1" onload="log('<span class=ok>✅ supabase_config.js OK</span>')" onerror="log('<div class=error>❌ supabase_config.js no cargó</div>')"></script>
+<script>log('Cargando logo_base64.js...');</script>
+<script src="logo_base64.js?v=d1" onload="log('<span class=ok>✅ logo_base64.js OK</span>')" onerror="log('<div class=error>❌ logo_base64.js no cargó</div>')"></script>
+<script>log('Cargando remitos_generator.js...');</script>
+<script src="remitos_generator.js?v=d1" onload="log('<span class=ok>✅ remitos_generator.js OK</span>')" onerror="log('<div class=error>❌ remitos_generator.js no cargó</div>')"></script>
+<script>log('Cargando app.js... (puede tardar unos segundos)');</script>
+<script src="app.js?v=d1" onload="log('<span class=ok>✅ app.js cargó sin errores de sintaxis</span>')" onerror="log('<div class=error>❌ app.js no cargó</div>')"></script>
+<script>
+setTimeout(function() {
+  log('<br><b>--- Estado final ---</b>');
+  log('initContenedoresApp: ' + (typeof window.initContenedoresApp !== 'undefined' ? '<span class=ok>✅ existe</span>' : '<span class="error">❌ NO existe</span>'));
+  log('ejecutarLogin: ' + (typeof window.ejecutarLogin !== 'undefined' ? '<span class=ok>✅ existe</span>' : '<span class="error">❌ NO existe</span>'));
+  log('resolverUbicacionInteligente: ' + (typeof window.resolverUbicacionInteligente !== 'undefined' ? '<span class=ok>✅ existe</span>' : '<span class="error">❌ NO existe</span>'));
+  log('ZONAS_GEOGRAFICAS: ' + (typeof ZONAS_GEOGRAFICAS !== 'undefined' ? '<span class=ok>✅ existe (' + ZONAS_GEOGRAFICAS.length + ' zonas)</span>' : '<span class="error">❌ NO existe</span>'));
+  log('<br>✔ Diagnóstico completo.');
+}, 2500);
+</script>
+</body>
+</html>

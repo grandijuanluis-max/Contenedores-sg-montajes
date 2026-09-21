@@ -424,6 +424,58 @@ body {
     border: 1px solid rgba(244, 63, 94, 0.4);
 }
 
+.badge-traslado-si {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    display: inline-block;
+    text-align: center;
+}
+
+.badge-traslado-no {
+    background: rgba(148, 163, 184, 0.12);
+    color: #94a3b8;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    display: inline-block;
+    text-align: center;
+}
+
+.badge-prov-sg {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.badge-prov-acosta {
+    background: rgba(2, 132, 199, 0.18);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
 /* Modals */
 .modal-overlay {
     position: fixed;
@@ -1442,5 +1494,140 @@ input:focus, select:focus, textarea:focus {
     opacity: 0.9;
     height: 6px !important;
 }
+
+/* =======================================================
+   ESTILOS PARA SEGUIMIENTO & TRAZABILIDAD DE CONTENEDORES
+   ======================================================= */
+.seguimiento-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.seguimiento-kpi-card {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    backdrop-filter: blur(8px);
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.seguimiento-kpi-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
+.seguimiento-kpi-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.seguimiento-kpi-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.seguimiento-kpi-val {
+    font-size: 22px;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.1;
+}
+
+.seguimiento-kpi-label {
+    font-size: 11px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+/* Badges de Estado del Movimiento */
+.badge-mov-salida {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.badge-mov-entrada {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.badge-mov-transito {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Filtros chips de seguimiento */
+.seguimiento-filters-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.chip-filtro-seguimiento {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: #94a3b8;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.chip-filtro-seguimiento:hover {
+    color: #ffffff;
+    border-color: rgba(56, 189, 248, 0.4);
+    background: rgba(56, 189, 248, 0.1);
+}
+
+.chip-filtro-seguimiento.active {
+    background: rgba(243, 178, 41, 0.2);
+    border-color: var(--warning);
+    color: var(--warning);
+    font-weight: 700;
+}
+
 
 

@@ -4,7 +4,7 @@
 ---
 
 ## 🎯 PROPÓSITO GENERAL DEL PROYECTO
-Desarrollar, mantener y evolucionar la aplicación web profesional e independiente para la gestión integral de la flota de 50 contenedores y módulos habitacionales de **SG MONTAJES S.R.L.** (CUIT: 30-71602466-7, Depósito Central Sarandí).
+Desarrollar, mantener y evolucionar la aplicación web profesional e independiente para la gestión integral de la flota de 50 contenedores y módulos habitacionales de **SG MONTAJES S.R.L. / ACOSTA SERVICIOS S.R.L.** (Base Operativa — Timbúes).
 
 ---
 
@@ -47,7 +47,7 @@ Desarrollar, mantener y evolucionar la aplicación web profesional e independien
   "estado": "empresa | alquilado | reservado | reparacion",
   "pago": "al_dia | pendiente | retrasado",
   "cliente": "Razón social del cliente o vacío",
-  "ubicacion": "Dirección de obra o Depósito Sarandí",
+  "ubicacion": "Dirección de obra o Base Operativa Timbúes",
   "lat": -34.7415,
   "lng": -58.2733,
   "entrega": "YYYY-MM-DD",
@@ -93,7 +93,7 @@ Desarrollar, mantener y evolucionar la aplicación web profesional e independien
    - Tablero Kanban de reparaciones con checklist de tareas y pase directo a Base.
 
 6. **Mapa de Obras**:
-   - Cartografía interactiva con marcadores de obras y depósito Sarandí.
+   - Cartografía interactiva con marcadores de obras y Base Operativa Timbúes.
 
 7. **Generador de Remitos PDF**:
    - Plantillas HTML/PDF oficiales con firmas y logo para Entrega y Retiro.

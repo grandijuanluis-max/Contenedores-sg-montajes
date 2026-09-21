@@ -42,7 +42,7 @@ El Dashboard es el centro de mando operativo del sistema. Brinda visibilidad en 
 ### 2.2. Tarjetas de Indicadores Clave (KPIs)
 - **Flota Total (50)**: Cantidad total de módulos registrados.
 - **Alquilados en Obra**: Cantidad de unidades activas en clientes y **porcentaje de ocupación en vivo**.
-- **Disponibles en Base**: Unidades limpias y disponibles en Sarandí.
+- **Disponibles en Base**: Unidades limpias y disponibles en Base Operativa Timbúes.
 - **Reservados**: Despachos comprometidos.
 - **En Taller / Mantenimiento**: Unidades en acondicionamiento técnico con indicador de alerta.
 - **Vencimientos & Pagos**: Alertas de alquileres fuera de plazo o mora comercial.
@@ -82,7 +82,7 @@ Permite administrar el ciclo contractual completo de cada alquiler:
 
 ### Prórrogas y Devoluciones:
 - **Prórroga (⏳)**: Permite extender la fecha de vencimiento sin necesidad de rehacer el contrato.
-- **Devolución (📦)**: Finaliza el contrato, emite el Remito de Devolución/Retiro y permite enviar la unidad a **Base Sarandí** o derivarla a **Taller** si presenta roturas.
+- **Devolución (📦)**: Finaliza el contrato, emite el Remito de Devolución/Retiro y permite enviar la unidad a **Base Operativa Timbúes** o derivarla a **Taller** si presenta roturas.
 
 ---
 
@@ -101,7 +101,7 @@ Tablero operativo para el equipo de logística y pañol:
 ## 6. Mapa Interactivo de Obras
 
 - Visualización geográfica impulsada por **Leaflet.js** y **OpenStreetMap**.
-- Muestra el **Depósito Central Sarandí** (marcador dorado destacado) y todos los módulos desplegados en obras activas.
+- Muestra la **Base Operativa Timbúes** (marcador destacado) y todos los módulos desplegados en obras activas.
 - Al hacer clic en un pin de obra, se abre la ventana emergente con el código del contenedor, cliente, tipo y botón para abrir su ficha.
 
 ---

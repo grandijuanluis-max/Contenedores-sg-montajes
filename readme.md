@@ -18,7 +18,7 @@ Plataforma web profesional e independiente para la administración logística, c
 - **Inventario Completo (50 Unidades)**: Seguimiento de módulos (*C-101 a C-150*).
 - **Asignación Rápida de Alquileres**: Generación y extensión de contratos de alquiler a 30 días.
 - **Tablero de Taller & Mantenimiento**: Seguimiento de reparaciones con checklist técnico.
-- **Mapa Geográfico Interactivo**: Despliegue en obras y base central Sarandí.
+- **Mapa Geográfico Interactivo**: Despliegue en obras y Base Operativa Timbúes.
 - **Emisión de Remitos Oficiales**: Generación instantánea en PDF para Entrega y Retiro.
 - **Panel de Configuración**: Gestión de usuarios, datos de la empresa y copias de seguridad JSON.
 - **Sincronización Dual**: Funciona de forma local con LocalStorage o conectado a Supabase en la nube.

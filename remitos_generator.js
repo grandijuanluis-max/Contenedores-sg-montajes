@@ -108,6 +108,7 @@ window.generarRemitoHTML = function(cont, tipo = 'entrega') {
         <div style="margin-bottom: 25px; font-size: 11px;">
             <strong style="color: #0f172a;">Observaciones de Despacho:</strong>
             <div style="border: 1px dashed #cbd5e1; padding: 8px; border-radius: 4px; min-height: 38px; margin-top: 4px; background: #ffffff; color: #475569;">
+                ${(cont.traslado === 'si' || cont.traslado === true) ? `<div style="margin-bottom: 4px; font-weight: bold; color: #0284c7;">🚚 Traslado Adicional: SÍ ${(cont.trasladoMonto || cont.trasladoHoras) ? `(Monto: ${cont.trasladoMonto || '-'} | Horas: ${cont.trasladoHoras || '-'})` : ''}</div>` : ''}
                 ${isEntrega ? (cont.obsEntrega || cont.observaciones || 'Sin observaciones adicionales.') : (cont.obsRetiro || 'Recepción en conformidad en base operativa.')}
             </div>
         </div>

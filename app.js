@@ -14,10 +14,12 @@ const EVENTS_STORAGE_KEY = 'sg_contenedores_events_v2';
 const liveChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('sg_contenedores_live_channel') : null;
 
 const DEFAULT_USERS = [
-    { id: '1', username: 'melani', password: '123', email: 'melanidaiana28@gmail.com', role: 'Administrador', nombre: 'Melani Grandi' },
-    { id: '2', username: 'mel', password: '123', email: 'melanidaiana28@gmail.com', role: 'Administrador', nombre: 'Mel' },
-    { id: '3', username: 'admin', password: '123', email: 'cotizaciones@sgmontajes.com.ar', role: 'Administrador', nombre: 'Administrador General' },
-    { id: '4', username: 'logistica', password: '123', email: 'logistica@sgmontajes.com.ar', role: 'Operador Logística', nombre: 'Depósito & Despacho' }
+    { id: '1', username: 'melani', password: '123', email: 'melanidaiana28@gmail.com', role: 'Administrador', nombre: 'Melani Grandi', permisos_contenedores: ['ver_flota', 'editar_flota', 'editar_alquileres', 'editar_seguimiento', 'editar_taller', 'ver_configuracion', 'ver_supabase'] },
+    { id: '2', username: 'mel', password: '123', email: 'melanidaiana28@gmail.com', role: 'Administrador', nombre: 'Mel', permisos_contenedores: ['ver_flota', 'editar_flota', 'editar_alquileres', 'editar_seguimiento', 'editar_taller', 'ver_configuracion', 'ver_supabase'] },
+    { id: '3', username: 'admin', password: '123', email: 'cotizaciones@sgmontajes.com.ar', role: 'Administrador', nombre: 'Administrador General', permisos_contenedores: ['ver_flota', 'editar_flota', 'editar_alquileres', 'editar_seguimiento', 'editar_taller', 'ver_configuracion', 'ver_supabase'] },
+    { id: '4', username: 'logistica', password: '123', email: 'logistica@sgmontajes.com.ar', role: 'Operador Logística', nombre: 'Operador Logística', permisos_contenedores: ['ver_flota', 'editar_flota', 'editar_alquileres', 'editar_seguimiento', 'editar_taller'] },
+    { id: '5', username: 'seguimiento', password: '123', email: 'seguimiento@sgmontajes.com.ar', role: 'Control de Seguimiento', nombre: 'Operadora de Seguimiento', permisos_contenedores: ['ver_flota', 'editar_seguimiento'] },
+    { id: '6', username: 'consulta', password: '123', email: 'consulta@sgmontajes.com.ar', role: 'Consulta', nombre: 'Usuario Consulta', permisos_contenedores: ['ver_flota'] }
 ];
 
 const DEFAULT_SETTINGS = {
@@ -62,6 +64,493 @@ let appData = {
     callTimerInterval: null
 };
 
+// =========================================================
+// MÓDULO: INTEGRACIÓN TOTAL CON SUPABASE DATABASE & REALTIME
+// Persistencia en la nube de Contenedores, Seguimiento, Usuarios, Configuración y Eventos
+// =========================================================
+
+window.supabaseSyncState = {
+    conectado: false,
+    sincronizando: false,
+    ultimaSync: null,
+    error: null
+};
+
+// Actualizar indicador de estado en la interfaz
+window.actualizarBadgeSupabaseUI = function(estado, mensaje) {
+    const badge = document.getElementById('supabase-sync-badge');
+    const icon = document.getElementById('supabase-sync-icon');
+    const text = document.getElementById('supabase-sync-text');
+    const pill = document.getElementById('supabase-panel-status-pill');
+    const timeEl = document.getElementById('supabase-last-sync-time');
+
+    if (timeEl && window.supabaseSyncState.ultimaSync) {
+        timeEl.textContent = window.supabaseSyncState.ultimaSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    if (!badge || !icon || !text) return;
+
+    if (estado === 'syncing') {
+        badge.style.background = 'rgba(56, 189, 248, 0.15)';
+        badge.style.borderColor = 'rgba(56, 189, 248, 0.5)';
+        badge.style.color = '#38bdf8';
+        icon.className = 'fas fa-sync-alt fa-spin';
+        text.textContent = mensaje || 'Sincronizando...';
+        if (pill) { pill.className = 'badge-estado badge-reservado'; pill.textContent = '🔄 Sincronizando...'; }
+    } else if (estado === 'ok') {
+        window.supabaseSyncState.conectado = true;
+        badge.style.background = 'rgba(16, 185, 129, 0.15)';
+        badge.style.borderColor = 'rgba(16, 185, 129, 0.45)';
+        badge.style.color = '#10b981';
+        icon.className = 'fas fa-cloud';
+        text.textContent = mensaje || 'Supabase Conectado';
+        if (pill) { pill.className = 'badge-estado badge-alquilado'; pill.textContent = '🟢 Conectado (Nube)'; }
+    } else if (estado === 'error') {
+        window.supabaseSyncState.conectado = false;
+        badge.style.background = 'rgba(244, 63, 94, 0.15)';
+        badge.style.borderColor = 'rgba(244, 63, 94, 0.45)';
+        badge.style.color = '#f43f5e';
+        icon.className = 'fas fa-cloud-rain';
+        text.textContent = mensaje || 'Modo Local (Offline)';
+        if (pill) { pill.className = 'badge-estado badge-reparacion'; pill.textContent = '🔴 Modo Local'; }
+    }
+};
+
+// Mapeos de modelo: Local JS <-> Supabase DB
+window.modelToSupabaseContenedor = function(c) {
+    return {
+        code: c.code,
+        proveedor: c.proveedor || 'ACOSTA SERVICIOS SRL',
+        tipo: c.tipo || 'Oficina',
+        medida: c.medida || "20'",
+        estado: c.estado || 'empresa',
+        pago: c.pago || 'al_dia',
+        cliente: c.cliente || '',
+        ubicacion: c.ubicacion || 'Base Operativa — Timbúes',
+        lat: typeof c.lat === 'number' && !isNaN(c.lat) ? c.lat : -32.6642,
+        lng: typeof c.lng === 'number' && !isNaN(c.lng) ? c.lng : -60.7932,
+        entrega: c.entrega && c.entrega.trim() ? c.entrega : null,
+        retiro: c.retiro && c.retiro.trim() ? c.retiro : null,
+        monto: c.monto || '',
+        obs_entrega: c.obsEntrega || '',
+        obs_retiro: c.obsRetiro || '',
+        tareas: Array.isArray(c.tareas) ? c.tareas : [],
+        historial: Array.isArray(c.historial) ? c.historial : [],
+        traslado: c.traslado || 'no',
+        traslado_monto: c.trasladoMonto || '',
+        traslado_horas: c.trasladoHoras || '',
+        updated_at: new Date().toISOString()
+    };
+};
+
+window.supabaseToModelContenedor = function(row) {
+    return {
+        id: row.id,
+        code: row.code,
+        proveedor: row.proveedor || 'ACOSTA SERVICIOS SRL',
+        tipo: row.tipo || 'Oficina',
+        medida: row.medida || "20'",
+        estado: row.estado || 'empresa',
+        pago: row.pago || 'al_dia',
+        cliente: row.cliente || '',
+        ubicacion: row.ubicacion || 'Base Operativa — Timbúes',
+        lat: typeof row.lat === 'number' && !isNaN(row.lat) ? row.lat : -32.6642,
+        lng: typeof row.lng === 'number' && !isNaN(row.lng) ? row.lng : -60.7932,
+        entrega: row.entrega || '',
+        retiro: row.retiro || '',
+        monto: row.monto || '',
+        obsEntrega: row.obs_entrega || '',
+        obsRetiro: row.obs_retiro || '',
+        tareas: Array.isArray(row.tareas) ? row.tareas : [],
+        historial: Array.isArray(row.historial) ? row.historial : [],
+        traslado: row.traslado || 'no',
+        trasladoMonto: row.traslado_monto || '',
+        trasladoHoras: row.traslado_horas || ''
+    };
+};
+
+window.modelToSupabaseSeguimiento = function(m) {
+    return {
+        id: m.id || ('seg_' + Date.now() + '_' + m.code),
+        code: m.code,
+        tipo: m.tipo || 'Oficina',
+        medida: m.medida || "20'",
+        proveedor: m.proveedor || 'ACOSTA SERVICIOS SRL',
+        cliente: m.cliente || '',
+        fecha_salida: m.fechaSalida && m.fechaSalida.trim() ? m.fechaSalida : null,
+        hora_salida: m.horaSalida || '',
+        destino: m.destino || '',
+        fecha_entrada: m.fechaEntrada && m.fechaEntrada.trim() ? m.fechaEntrada : null,
+        hora_entrada: m.horaEntrada || '',
+        estado_movimiento: m.estadoMovimiento || 'en_obra',
+        traslado: typeof m.traslado === 'string' ? m.traslado : (m.traslado && m.traslado.activo ? 'si' : 'no'),
+        traslado_monto: m.trasladoMonto || '',
+        traslado_horas: m.trasladoHoras || '',
+        observaciones: m.observaciones || '',
+        remito_numero: m.remitoNumero || '',
+        usuario: m.usuario || (appData.currentUser ? appData.currentUser.username : 'admin'),
+        created_at: m.timestamp || new Date().toISOString()
+    };
+};
+
+window.supabaseToModelSeguimiento = function(row) {
+    return {
+        id: row.id,
+        code: row.code,
+        tipo: row.tipo || 'Oficina',
+        medida: row.medida || "20'",
+        proveedor: row.proveedor || 'ACOSTA SERVICIOS SRL',
+        cliente: row.cliente || '',
+        fechaSalida: row.fecha_salida || '',
+        horaSalida: row.hora_salida || '',
+        destino: row.destino || '',
+        fechaEntrada: row.fecha_entrada || '',
+        horaEntrada: row.hora_entrada || '',
+        estadoMovimiento: row.estado_movimiento || 'en_obra',
+        traslado: row.traslado || 'no',
+        trasladoMonto: row.traslado_monto || '',
+        trasladoHoras: row.traslado_horas || '',
+        observaciones: row.observaciones || '',
+        remitoNumero: row.remito_numero || '',
+        usuario: row.usuario || '',
+        timestamp: row.created_at
+    };
+};
+
+// Operaciones individuales en Supabase (asíncronas, en segundo plano)
+window.guardarContenedorEnSupabase = async function(c) {
+    if (!window.supabaseClient) return;
+    try {
+        const payload = window.modelToSupabaseContenedor(c);
+        const { error } = await window.supabaseClient.from('contenedores').upsert(payload, { onConflict: 'code' });
+        if (error) console.warn("Supabase upsert error en contenedor:", error);
+        else {
+            window.supabaseSyncState.ultimaSync = new Date();
+            window.actualizarBadgeSupabaseUI('ok');
+        }
+    } catch(err) {
+        console.warn("Error en guardarContenedorEnSupabase:", err);
+    }
+};
+
+window.eliminarContenedorEnSupabase = async function(code) {
+    if (!window.supabaseClient) return;
+    try {
+        const { error } = await window.supabaseClient.from('contenedores').delete().eq('code', code);
+        if (error) console.warn("Supabase delete error:", error);
+    } catch(err) {
+        console.warn("Error en eliminarContenedorEnSupabase:", err);
+    }
+};
+
+window.guardarSeguimientoEnSupabase = async function(m) {
+    if (!window.supabaseClient) return;
+    try {
+        const payload = window.modelToSupabaseSeguimiento(m);
+        const { error } = await window.supabaseClient.from('seguimiento_contenedores').upsert(payload, { onConflict: 'id' });
+        if (error) console.warn("Supabase upsert error en seguimiento:", error);
+        else {
+            window.supabaseSyncState.ultimaSync = new Date();
+            window.actualizarBadgeSupabaseUI('ok');
+        }
+    } catch(err) {
+        console.warn("Error en guardarSeguimientoEnSupabase:", err);
+    }
+};
+
+window.guardarUsuarioEnSupabase = async function(u) {
+    if (!window.supabaseClient) return;
+    try {
+        const { error } = await window.supabaseClient.from('usuarios').upsert({
+            id: u.id || ('usr_' + u.username),
+            username: u.username,
+            password: u.password || '123',
+            nombre: u.nombre || u.username,
+            email: u.email || '',
+            permisos_contenedores: u.permisos_contenedores || []
+        }, { onConflict: 'username' });
+        if (error) console.warn("Supabase upsert error en permisos_contenedores:", error);
+    } catch(err) {
+        console.warn("Error en guardarUsuarioEnSupabase:", err);
+    }
+};
+
+window.eliminarUsuarioEnSupabase = async function(username) {
+    if (!window.supabaseClient) return;
+    try {
+        // En la base unificada, no borramos el usuario completo; se le quitan los permisos de Contenedores
+        const { error } = await window.supabaseClient.from('usuarios').update({
+            permisos_contenedores: []
+        }).eq('username', username);
+        if (error) console.warn("Supabase update error en permisos_contenedores:", error);
+    } catch(err) {
+        console.warn("Error en eliminarUsuarioEnSupabase:", err);
+    }
+};
+
+window.guardarConfiguracionEnSupabase = async function(s) {
+    if (!window.supabaseClient) return;
+    try {
+        const { error } = await window.supabaseClient.from('configuracion_contenedores').upsert({
+            id: 1,
+            empresa: s.empresa,
+            cuit: s.cuit,
+            iva: s.iva,
+            deposito_principal: s.deposito_principal,
+            direccion: s.direccion,
+            email_notificaciones: s.email_notificaciones,
+            telefono: s.telefono,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+        if (error) console.warn("Supabase upsert error en configuracion:", error);
+    } catch(err) {
+        console.warn("Error en guardarConfiguracionEnSupabase:", err);
+    }
+};
+
+window.guardarEventoEnSupabase = async function(ev) {
+    if (!window.supabaseClient) return;
+    try {
+        const { error } = await window.supabaseClient.from('eventos_operativos').insert({
+            id: ev.id,
+            tipo: ev.tipo,
+            descripcion: ev.descripcion,
+            code: ev.code || null,
+            usuario: ev.usuario || 'Sistema',
+            hora: ev.hora || ''
+        });
+        if (error) console.warn("Supabase insert error en eventos:", error);
+    } catch(err) {
+        console.warn("Error en guardarEventoEnSupabase:", err);
+    }
+};
+
+// Carga Inicial y Sincronización desde Supabase
+window.cargarDesdeSupabase = async function(silencioso) {
+    if (!window.supabaseClient) {
+        window.actualizarBadgeSupabaseUI('error', 'Supabase No Inicializado');
+        return;
+    }
+
+    try {
+        window.actualizarBadgeSupabaseUI('syncing', 'Descargando datos...');
+
+        // 1. Cargar Contenedores
+        const { data: contData, error: contErr } = await window.supabaseClient.from('contenedores').select('*').order('code');
+        if (contErr) throw contErr;
+
+        if (Array.isArray(contData) && contData.length > 0) {
+            console.log(`✓ Descargados ${contData.length} contenedores de Supabase.`);
+            appData.contenedores = contData.map(window.supabaseToModelContenedor);
+            saveData(false); // Guarda localmente sin re-enviar
+        } else if (Array.isArray(appData.contenedores) && appData.contenedores.length > 0) {
+            console.log("Tabla contenedores vacía en Supabase. Subiendo inventario inicial...");
+            await window.subirFlotaCompletaASupabase(false);
+        }
+
+        // 2. Cargar Seguimiento & Trazabilidad
+        const { data: segData, error: segErr } = await window.supabaseClient.from('seguimiento_contenedores').select('*').order('created_at', { ascending: false });
+        if (!segErr && Array.isArray(segData) && segData.length > 0) {
+            console.log(`✓ Descargados ${segData.length} movimientos de seguimiento de Supabase.`);
+            appData.seguimientoMovimientos = segData.map(window.supabaseToModelSeguimiento);
+            guardarSeguimientoData(false);
+        } else if (Array.isArray(appData.seguimientoMovimientos) && appData.seguimientoMovimientos.length > 0) {
+            console.log("Subiendo movimientos iniciales de seguimiento a Supabase...");
+            const segPayloads = appData.seguimientoMovimientos.map(window.modelToSupabaseSeguimiento);
+            await window.supabaseClient.from('seguimiento_contenedores').upsert(segPayloads, { onConflict: 'id' });
+        }
+
+        // 3. Cargar Usuarios desde la tabla unificada 'usuarios'
+        const { data: usrData, error: usrErr } = await window.supabaseClient.from('usuarios').select('*');
+        if (!usrErr && Array.isArray(usrData) && usrData.length > 0) {
+            appData.users = usrData.map(u => {
+                let pCont = u.permisos_contenedores;
+                if (typeof pCont === 'string') {
+                    try { pCont = JSON.parse(pCont); } catch(e) { pCont = []; }
+                }
+                const cleanU = String(u.username || '').toLowerCase();
+                const isSuper = cleanU === 'melani' || cleanU === 'mel' || cleanU === 'admin';
+                if (isSuper && (!Array.isArray(pCont) || pCont.length === 0)) {
+                    pCont = ['ver_flota', 'editar_flota', 'editar_alquileres', 'editar_seguimiento', 'editar_taller', 'ver_configuracion', 'ver_supabase'];
+                }
+                return {
+                    id: String(u.id || ('usr_' + u.username)),
+                    username: u.username,
+                    password: u.password || u.password_hash || '123',
+                    email: u.email || '',
+                    nombre: u.nombre || u.vendedor_nombre || u.username,
+                    permisos: u.permisos || [],
+                    permisos_contenedores: Array.isArray(pCont) ? pCont : [],
+                    role: u.role || 'Solicitante'
+                };
+            });
+            saveUsers(false);
+        }
+
+        // 4. Cargar Configuración
+        const { data: cfgData, error: cfgErr } = await window.supabaseClient.from('configuracion_contenedores').select('*').limit(1).single();
+        if (!cfgErr && cfgData) {
+            appData.settings = {
+                empresa: cfgData.empresa,
+                cuit: cfgData.cuit,
+                iva: cfgData.iva,
+                deposito_principal: cfgData.deposito_principal,
+                direccion: cfgData.direccion,
+                email_notificaciones: cfgData.email_notificaciones,
+                telefono: cfgData.telefono
+            };
+            saveSettings(false);
+        }
+
+        // 5. Cargar Eventos Operativos
+        const { data: evData, error: evErr } = await window.supabaseClient.from('eventos_operativos').select('*').order('created_at', { ascending: false }).limit(60);
+        if (!evErr && Array.isArray(evData) && evData.length > 0) {
+            appData.activityEvents = evData.map(e => ({
+                id: e.id,
+                tipo: e.tipo,
+                descripcion: e.descripcion,
+                code: e.code,
+                usuario: e.usuario,
+                hora: e.hora || new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                timestamp: e.created_at
+            }));
+            try { localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(appData.activityEvents)); } catch(e) {}
+            try { renderTorreEvents(); } catch(e) {}
+        }
+
+        window.supabaseSyncState.ultimaSync = new Date();
+        window.actualizarBadgeSupabaseUI('ok', 'Supabase Conectado');
+
+        // Refrescar vistas en pantalla
+        try { renderHeaderStats(); } catch(e) {}
+        try { renderDashboard(); } catch(e) {}
+        try { renderFlotaTable(); } catch(e) {}
+        try { renderAlquileresTable(); } catch(e) {}
+        try { renderSeguimientoTable(); } catch(e) {}
+        try { renderMantenimientoBoard(); } catch(e) {}
+
+        if (!silencioso) {
+            showToast("✓ Sincronizado en tiempo real con Supabase Cloud.", "success");
+        }
+    } catch(err) {
+        console.warn("Aviso en sincronización con Supabase (usando datos locales):", err);
+        window.actualizarBadgeSupabaseUI('error', 'Supabase Offline (Local)');
+    }
+};
+
+// Subida completa forzada a Supabase
+window.subirFlotaCompletaASupabase = async function(conToast) {
+    if (!window.supabaseClient) {
+        showToast("Supabase no está disponible.", "error");
+        return;
+    }
+
+    try {
+        window.actualizarBadgeSupabaseUI('syncing', 'Subiendo inventario...');
+        if (conToast) showToast("Subiendo flota y seguimiento a Supabase Cloud...", "info");
+
+        // Subir contenedores
+        if (Array.isArray(appData.contenedores) && appData.contenedores.length > 0) {
+            const contPayloads = appData.contenedores.map(window.modelToSupabaseContenedor);
+            const { error: cErr } = await window.supabaseClient.from('contenedores').upsert(contPayloads, { onConflict: 'code' });
+            if (cErr) console.warn("Error subiendo contenedores a Supabase:", cErr);
+        }
+
+        // Subir seguimiento
+        if (Array.isArray(appData.seguimientoMovimientos) && appData.seguimientoMovimientos.length > 0) {
+            const segPayloads = appData.seguimientoMovimientos.map(window.modelToSupabaseSeguimiento);
+            const { error: sErr } = await window.supabaseClient.from('seguimiento_contenedores').upsert(segPayloads, { onConflict: 'id' });
+            if (sErr) console.warn("Error subiendo seguimiento a Supabase:", sErr);
+        }
+
+        // Subir configuración
+        if (appData.settings) {
+            await window.guardarConfiguracionEnSupabase(appData.settings);
+        }
+
+        window.supabaseSyncState.ultimaSync = new Date();
+        window.actualizarBadgeSupabaseUI('ok', 'Supabase Conectado');
+
+        if (conToast) {
+            showToast("✓ Todos los contenedores y seguimientos guardados en Supabase Cloud.", "success");
+        }
+    } catch(err) {
+        console.error("Error subiendo datos a Supabase:", err);
+        window.actualizarBadgeSupabaseUI('error', 'Error al subir');
+        if (conToast) showToast("Error al subir datos a Supabase. Revise consola.", "error");
+    }
+};
+
+window.sincronizarManualmenteConSupabase = function() {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeVerSupabase: true };
+    if (!p.puedeVerSupabase) {
+        showToast("Acceso restringido: Solo Administradores pueden sincronizar con Supabase.", "warning");
+        return;
+    }
+    window.cargarDesdeSupabase(false);
+};
+
+// Suscripción Realtime (WebSockets)
+window.iniciarSupabaseRealtime = function() {
+    if (!window.supabaseClient) return;
+
+    try {
+        window.supabaseClient.channel('realtime-contenedores-cambios')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'contenedores' }, payload => {
+                console.log("⚡ Supabase Realtime (Contenedores):", payload);
+                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                    const row = payload.new;
+                    const contLocal = (appData.contenedores || []).find(x => x.code === row.code);
+                    if (contLocal) {
+                        Object.assign(contLocal, window.supabaseToModelContenedor(row));
+                    } else {
+                        appData.contenedores.push(window.supabaseToModelContenedor(row));
+                    }
+                } else if (payload.eventType === 'DELETE') {
+                    const row = payload.old;
+                    if (row && row.code) {
+                        appData.contenedores = appData.contenedores.filter(x => x.code !== row.code);
+                    }
+                }
+                saveData(false);
+                renderHeaderStats();
+                renderDashboard();
+                renderFlotaTable();
+                renderAlquileresTable();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'seguimiento_contenedores' }, payload => {
+                console.log("⚡ Supabase Realtime (Seguimiento):", payload);
+                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                    const row = payload.new;
+                    const movLocal = (appData.seguimientoMovimientos || []).find(x => x.id === row.id);
+                    if (movLocal) {
+                        Object.assign(movLocal, window.supabaseToModelSeguimiento(row));
+                    } else {
+                        if (!Array.isArray(appData.seguimientoMovimientos)) appData.seguimientoMovimientos = [];
+                        appData.seguimientoMovimientos.unshift(window.supabaseToModelSeguimiento(row));
+                    }
+                }
+                guardarSeguimientoData(false);
+                renderSeguimientoTable();
+            })
+            .subscribe((status) => {
+                console.log("Estado canal Supabase Realtime:", status);
+            });
+    } catch(e) {
+        console.warn("No se pudo conectar suscripción Realtime:", e);
+    }
+};
+
+window.descargarScriptSQLSupabase = function() {
+    const link = document.createElement("a");
+    link.href = "schema_supabase_contenedores.sql";
+    link.download = "schema_supabase_contenedores.sql";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("✓ Descargando script SQL completo para Supabase.", "info");
+};
+
 // Carga Inicial de Datos
 window.initContenedoresApp = function() {
     console.log("Iniciando Sistema de Contenedores Acosta Servicios...");
@@ -71,6 +560,18 @@ window.initContenedoresApp = function() {
         const localUsers = localStorage.getItem(USERS_STORAGE_KEY);
         if (localUsers) {
             appData.users = JSON.parse(localUsers);
+            let updated = false;
+            DEFAULT_USERS.forEach(defU => {
+                const found = (appData.users || []).find(u => u.username === defU.username);
+                if (!found) {
+                    appData.users.push(JSON.parse(JSON.stringify(defU)));
+                    updated = true;
+                } else if (found.role !== defU.role) {
+                    found.role = defU.role;
+                    updated = true;
+                }
+            });
+            if (updated) saveUsers();
         } else {
             appData.users = JSON.parse(JSON.stringify(DEFAULT_USERS));
             saveUsers();
@@ -112,7 +613,7 @@ window.initContenedoresApp = function() {
         }
     }
 
-    // Auto-migrar unidades con coordenadas antiguas de Sarandí (-34.6795) a Base Operativa Timbúes (-32.6642) y auto-reparar coordenadas faltantes
+    // Auto-migrar unidades con coordenadas antiguas a Base Operativa Timbúes (-32.6642) y auto-reparar coordenadas faltantes
     if (Array.isArray(appData.contenedores)) {
         let migrados = false;
         appData.contenedores.forEach(c => {
@@ -161,6 +662,21 @@ window.initContenedoresApp = function() {
             console.log("Unidad C-55 garantizada en memoria y mapa.");
         }
 
+        // REQUERIMIENTO: Asegurar que figuren al menos 3 contenedores de SG Montajes
+        const sgCount = appData.contenedores.filter(c => (c.proveedor || '').includes('SG')).length;
+        if (sgCount < 3 && appData.contenedores.length >= 3) {
+            let asignados = sgCount;
+            for (let c of appData.contenedores) {
+                if (asignados >= 3) break;
+                if (!c.proveedor || !c.proveedor.includes('SG')) {
+                    c.proveedor = 'SG Montajes';
+                    asignados++;
+                }
+            }
+            migrados = true;
+            console.log("Garantizadas 3 unidades pertenecientes a SG Montajes en la flota.");
+        }
+
         if (migrados) saveData();
     }
 
@@ -175,6 +691,16 @@ window.initContenedoresApp = function() {
     // 5. Verificar Sesión
     checkAuthSession();
     setupEscapeListener();
+
+    // 6. Conectar y sincronizar con Supabase Cloud en tiempo real
+    setTimeout(function() {
+        if (typeof window.cargarDesdeSupabase === 'function') {
+            window.cargarDesdeSupabase(true);
+        }
+        if (typeof window.iniciarSupabaseRealtime === 'function') {
+            window.iniciarSupabaseRealtime();
+        }
+    }, 150);
 };
 
 function checkAuthSession() {
@@ -184,7 +710,9 @@ function checkAuthSession() {
     }
     if (session) {
         try {
-            appData.currentUser = JSON.parse(session);
+            const parsed = JSON.parse(session);
+            const freshUser = (appData.users || []).find(u => u.username === parsed.username);
+            appData.currentUser = freshUser || parsed;
             sessionStorage.setItem(SESSION_KEY, JSON.stringify(appData.currentUser));
             mostrarPanelPrincipal();
             return;
@@ -208,6 +736,116 @@ function mostrarLogin() {
     }
 }
 
+// =========================================================
+// SISTEMA DE ROLES Y CONTROL DE ACCESO (RBAC)
+// 1. Administrador: Acceso total y único con botón Supabase.
+// 2. Operador Logística: Todo excepto Configuración y Supabase.
+// 3. Control de Seguimiento: Ve todo, solo modifica Seguimiento & Trazabilidad.
+// 4. Consulta: Solo lectura en todas las pantallas.
+// =========================================================
+
+window.obtenerRolActual = function() {
+    if (appData && appData.currentUser && appData.currentUser.role) {
+        return String(appData.currentUser.role).trim();
+    }
+    return 'Administrador';
+};
+
+window.obtenerPermisosUsuario = function() {
+    const u = appData && appData.currentUser ? appData.currentUser : null;
+    const cleanU = u && u.username ? String(u.username).trim().toLowerCase() : '';
+    
+    let perms = [];
+    if (u && Array.isArray(u.permisos_contenedores)) {
+        perms = u.permisos_contenedores;
+    } else if (u && typeof u.permisos_contenedores === 'string') {
+        try { perms = JSON.parse(u.permisos_contenedores); } catch(e) { perms = []; }
+    }
+
+    // Si es superadmin técnico y aún no tiene permisos explícitos cargados en BD
+    const isMaster = (cleanU === 'melani' || cleanU === 'mel' || cleanU === 'admin') && perms.length === 0;
+    if (isMaster) {
+        perms = ['ver_flota', 'editar_flota', 'editar_alquileres', 'editar_seguimiento', 'editar_taller', 'ver_configuracion', 'ver_supabase'];
+    }
+
+    const puedeVerFlota = perms.includes('ver_flota');
+    const puedeEditarFlota = perms.includes('editar_flota');
+    const puedeEditarAlquileres = perms.includes('editar_alquileres');
+    const puedeEditarTaller = perms.includes('editar_taller');
+    const puedeEditarSeguimiento = perms.includes('editar_seguimiento');
+    const puedeVerConfiguracion = perms.includes('ver_configuracion');
+    const puedeVerSupabase = perms.includes('ver_supabase');
+
+    let label = 'Personalizado';
+    if (puedeVerConfiguracion && puedeVerSupabase && puedeEditarFlota) label = 'Administrador';
+    else if (puedeEditarSeguimiento && !puedeEditarFlota) label = 'Control de Seguimiento';
+    else if (puedeEditarFlota || puedeEditarAlquileres || puedeEditarTaller) label = 'Operador Logística';
+    else if (puedeVerFlota) label = 'Solo Consulta';
+    else label = 'Sin Acceso';
+
+    return {
+        rol: label,
+        puedeVerFlota: puedeVerFlota,
+        puedeCrearContenedor: puedeEditarFlota,
+        puedeEditarFlota: puedeEditarFlota,
+        puedeEditarAlquileres: puedeEditarAlquileres,
+        puedeEditarTaller: puedeEditarTaller,
+        puedeEditarSeguimiento: puedeEditarSeguimiento,
+        puedeVerConfiguracion: puedeVerConfiguracion,
+        puedeVerSupabase: puedeVerSupabase
+    };
+};
+
+window.aplicarPermisosPorRol = function() {
+    const p = window.obtenerPermisosUsuario();
+
+    // 1. Botón Supabase (SOLO Administradores)
+    const supabaseBadge = document.getElementById('supabase-sync-badge');
+    if (supabaseBadge) {
+        supabaseBadge.style.display = p.puedeVerSupabase ? 'inline-flex' : 'none';
+    }
+
+    // 2. Botón + Alta en Header
+    const btnAltaHeader = document.getElementById('btn-header-alta-contenedor');
+    if (btnAltaHeader) {
+        btnAltaHeader.style.display = p.puedeCrearContenedor ? 'inline-flex' : 'none';
+    }
+
+    // 3. Solapa Configuración en barra de navegación
+    const navConfig = document.getElementById('nav-btn-configuracion');
+    if (navConfig) {
+        navConfig.style.display = p.puedeVerConfiguracion ? 'inline-flex' : 'none';
+    }
+
+    // 4. Si está en vista configuracion y no tiene permisos, redirigir a dashboard
+    if (appData.currentView === 'configuracion' && !p.puedeVerConfiguracion) {
+        if (typeof window.switchView === 'function') {
+            window.switchView('dashboard');
+        }
+    }
+
+    // 5. Botón + Registrar Movimiento en Seguimiento
+    const btnNuevoMov = document.getElementById('btn-nuevo-movimiento-seg');
+    if (btnNuevoMov) {
+        btnNuevoMov.style.display = p.puedeEditarSeguimiento ? 'inline-flex' : 'none';
+    }
+
+    // 6. Label y badge de rol en Header
+    const userLabel = document.getElementById('current-user-display');
+    if (userLabel && appData.currentUser) {
+        userLabel.textContent = appData.currentUser.nombre || appData.currentUser.username;
+    }
+    const roleBadge = document.getElementById('current-user-role-badge');
+    if (roleBadge) {
+        roleBadge.textContent = p.rol;
+        roleBadge.className = 'badge-estado ' + (
+            p.rol === 'Administrador' ? 'badge-disponible' :
+            p.rol === 'Operador Logística' ? 'badge-alquilado' :
+            p.rol === 'Control de Seguimiento' ? 'badge-reservado' : 'badge-empresa'
+        );
+    }
+};
+
 function mostrarPanelPrincipal() {
     try {
         const loginSec = document.getElementById('login-view');
@@ -222,21 +860,18 @@ function mostrarPanelPrincipal() {
         console.error("Error cambiando pantalla principal:", e);
     }
 
-    try {
-        const userLabel = document.getElementById('current-user-display');
-        if (userLabel && appData.currentUser) {
-            userLabel.textContent = appData.currentUser.nombre || appData.currentUser.username;
-        }
-    } catch(e) {}
+    try { window.aplicarPermisosPorRol(); } catch(e) {}
 
     try { renderHeaderStats(); } catch(e) { console.error("renderHeaderStats:", e); }
     try { renderDashboard(); } catch(e) { console.error("renderDashboard:", e); }
     try { renderFlotaTable(); } catch(e) { console.error("renderFlotaTable:", e); }
     try { renderAlquileresTable(); } catch(e) { console.error("renderAlquileresTable:", e); }
+    try { renderSeguimientoTable(); } catch(e) { console.error("renderSeguimientoTable:", e); }
     try { renderMantenimientoBoard(); } catch(e) { console.error("renderMantenimientoBoard:", e); }
     try { renderConfigUsuariosTable(); } catch(e) { console.error("renderConfigUsuariosTable:", e); }
     try { renderConfigParametrosForm(); } catch(e) { console.error("renderConfigParametrosForm:", e); }
     try { initCollaborativeEngine(); } catch(e) { console.error("initCollaborativeEngine:", e); }
+    try { window.aplicarPermisosPorRol(); } catch(e) {}
 }
 
 window.ejecutarLogin = function(e) {
@@ -254,14 +889,26 @@ window.ejecutarLogin = function(e) {
 
     let found = (appData.users || []).find(u => {
         const uName = String(u.username || '').toLowerCase().replace(/\s+/g, '');
-        return uName === username || uName.includes(username) || username.includes(uName);
+        return uName === username;
     });
 
-    if (!found) {
+    if (found) {
+        let perms = [];
+        if (Array.isArray(found.permisos_contenedores)) perms = found.permisos_contenedores;
+        else if (typeof found.permisos_contenedores === 'string') {
+            try { perms = JSON.parse(found.permisos_contenedores); } catch(e) { perms = []; }
+        }
+        const cleanU = String(found.username || '').toLowerCase();
+        const isMaster = cleanU === 'melani' || cleanU === 'mel' || cleanU === 'admin';
+        if (!isMaster && perms.length === 0) {
+            showToast("El usuario '" + (found.nombre || found.username) + "' no tiene permisos asignados para Contenedores.", "warning");
+            return false;
+        }
+    } else {
         found = { 
             id: String(Date.now()), 
             username: rawUser || username, 
-            role: 'Administrador', 
+            permisos_contenedores: ['ver_flota', 'editar_flota', 'editar_alquileres', 'editar_seguimiento', 'editar_taller', 'ver_configuracion', 'ver_supabase'],
             nombre: rawUser ? (rawUser.charAt(0).toUpperCase() + rawUser.slice(1)) : 'Melani Grandi',
             email: 'melanidaiana28@gmail.com'
         };
@@ -294,27 +941,46 @@ window.ejecutarLogout = function() {
     mostrarLogin();
 };
 
-function saveData() {
+function saveData(syncSupabase = true) {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(appData.contenedores));
     } catch(e) {
-        console.error("Error al guardar contenedores:", e);
+        console.error("Error al guardar contenedores localmente:", e);
+    }
+
+    if (syncSupabase && window.supabaseClient && Array.isArray(appData.contenedores)) {
+        try {
+            const payloads = appData.contenedores.map(window.modelToSupabaseContenedor);
+            window.supabaseClient.from('contenedores').upsert(payloads, { onConflict: 'code' })
+                .then(({ error }) => {
+                    if (error) console.warn("Supabase background sync contenedores:", error);
+                    else {
+                        window.supabaseSyncState.ultimaSync = new Date();
+                        window.actualizarBadgeSupabaseUI('ok');
+                    }
+                })
+                .catch(err => console.warn("Error en background sync Supabase:", err));
+        } catch(err) {}
     }
 }
 
-function saveUsers() {
+function saveUsers(syncSupabase = true) {
     try {
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(appData.users));
     } catch(e) {
-        console.error("Error al guardar usuarios:", e);
+        console.error("Error al guardar usuarios localmente:", e);
     }
 }
 
-function saveSettings() {
+function saveSettings(syncSupabase = true) {
     try {
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(appData.settings));
     } catch(e) {
-        console.error("Error al guardar configuración:", e);
+        console.error("Error al guardar configuración localmente:", e);
+    }
+
+    if (syncSupabase && window.supabaseClient && appData.settings) {
+        window.guardarConfiguracionEnSupabase(appData.settings);
     }
 }
 
@@ -704,6 +1370,7 @@ window.logOperationalEvent = function(tipo, descripcion, code) {
         renderTorreEvents();
 
         sendLiveSignal({ type: 'OPERATIONAL_EVENT', payload: event });
+        try { window.guardarEventoEnSupabase(event); } catch(e) {}
     } catch(err) {
         console.warn("Error guardando operational event:", err);
     }
@@ -2225,12 +2892,19 @@ const VIEW_NAMES = {
     'dashboard': 'Tablero',
     'flota': 'Contenedores',
     'alquileres': 'Alquileres',
+    'seguimiento': 'Seguimiento',
     'mantenimiento': 'Taller',
     'mapa': 'Mapa',
     'configuracion': 'Configuración'
 };
 
 window.switchView = function(viewId, isBack) {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeVerConfiguracion: true };
+    if (viewId === 'configuracion' && !p.puedeVerConfiguracion) {
+        showToast("Acceso restringido: Solo Administradores pueden acceder a Configuración.", "warning");
+        return;
+    }
+
     if (!isBack && appData.currentView && appData.currentView !== viewId) {
         if (!Array.isArray(appData.navigationHistory)) appData.navigationHistory = [];
         appData.navigationHistory.push(appData.currentView);
@@ -2250,6 +2924,7 @@ window.switchView = function(viewId, isBack) {
     if (viewId === 'dashboard') renderDashboard();
     if (viewId === 'flota') renderFlotaTable();
     if (viewId === 'alquileres') renderAlquileresTable();
+    if (viewId === 'seguimiento') renderSeguimientoTable();
     if (viewId === 'mantenimiento') renderMantenimientoBoard();
     if (viewId === 'configuracion') {
         renderConfigUsuariosTable();
@@ -2263,6 +2938,7 @@ window.switchView = function(viewId, isBack) {
     }
 
     try { sendPresenceHeartbeat(); } catch(e) {}
+    try { window.aplicarPermisosPorRol(); } catch(e) {}
 };
 
 window.goBack = function() {
@@ -2375,6 +3051,7 @@ function renderHeaderStats() {
     if (el) {
         el.innerHTML = `<strong>${m.alquilados}</strong> en obra (${m.ocupacionPct}%) • <strong>${m.empresa}</strong> en base • <strong>${m.reparacion}</strong> en taller`;
     }
+    try { window.aplicarPermisosPorRol(); } catch(e) {}
 }
 
 function renderDashboard() {
@@ -2685,7 +3362,13 @@ function renderDashboardTable() {
             <td><strong>${c.tipo}</strong> <span style="font-size: 11px; color: #94a3b8;">(${c.medida})</span></td>
             <td>${renderBadgeEstado(c.estado)}</td>
             <td>${renderBadgePago(c.pago)}</td>
-            <td>${c.cliente ? `<strong>${c.cliente}</strong>` : '<span style="color: #64748b;">Acosta Servicios (Base)</span>'}</td>
+            <td>
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
+                    ${renderBadgeProveedor(c)}
+                    ${renderBadgeTraslado(c)}
+                </div>
+                <div>${c.cliente ? `<strong>${c.cliente}</strong>` : '<span style="color: #94a3b8;">(Disponible en Base)</span>'}</div>
+            </td>
             <td>${c.ubicacion || 'Base Timbúes'}</td>
             <td>${c.retiro ? `<span style="font-family: monospace; font-size: 11.5px;">${c.retiro}</span>` : '<span style="color: #64748b;">-</span>'}</td>
             <td>
@@ -2802,6 +3485,59 @@ window.abrirModalAsignarAlquilerDashboard = function() {
     }
 };
 
+// =========================================================
+// RENDERIZADO DE BADGES: PROVEEDOR Y TRASLADO
+// =========================================================
+
+window.toggleProveedorContenedor = function(code) {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarFlota: true };
+    if (!p.puedeEditarFlota) {
+        showToast("No tienes permisos para modificar el proveedor de la flota.", "warning");
+        return;
+    }
+    const cont = (appData.contenedores || []).find(c => c.code === code);
+    if (!cont) return;
+    const isSg = (cont.proveedor || '').toUpperCase().includes('SG') || (cont.proveedor || '').toUpperCase().includes('MONTAJES');
+    cont.proveedor = isSg ? 'ACOSTA SERVICIOS SRL' : 'SG MONTAJES SRL';
+    saveData();
+    renderHeaderStats();
+    renderDashboard();
+    renderFlotaTable();
+    renderAlquileresTable();
+    if (appData.markersGroup) populateMarkers(appData.markersGroup, false);
+    if (appData.dashMarkersGroup) populateMarkers(appData.dashMarkersGroup, true);
+    const nuevoNombre = isSg ? 'Acosta Servicios' : 'SG Montajes';
+    showToast(`✓ Contenedor ${code} asignado a ${nuevoNombre}`, 'info');
+};
+
+window.renderBadgeProveedor = function(cont) {
+    const code = (typeof cont === 'object' && cont ? cont.code : '');
+    const prov = (typeof cont === 'string' ? cont : (cont && cont.proveedor ? cont.proveedor : '')).toUpperCase();
+    const isSg = prov.includes('SG') || prov.includes('MONTAJES');
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarFlota: true };
+    const clickAttr = (code && p.puedeEditarFlota) ? `onclick="event.stopPropagation(); toggleProveedorContenedor('${code}')" title="Hacé clic para cambiar a ${isSg ? 'Acosta Servicios' : 'SG Montajes'}" style="cursor: pointer;"` : 'style="cursor: default;"';
+    if (isSg) {
+        return `<span class="badge-prov-sg" ${clickAttr}><i class="fas fa-gear"></i> SG Montajes</span>`;
+    }
+    return `<span class="badge-prov-acosta" ${clickAttr}><i class="fas fa-shield-halved"></i> Acosta</span>`;
+};
+
+window.renderBadgeTraslado = function(cont) {
+    const tieneTraslado = (cont.traslado === 'si' || cont.traslado === true);
+    if (tieneTraslado) {
+        const extraInfo = [cont.trasladoMonto, cont.trasladoHoras].filter(Boolean).join(' • ');
+        return `
+            <div style="display: inline-flex; flex-direction: column; align-items: center; gap: 2px;">
+                <span class="badge-traslado-si" title="${extraInfo ? extraInfo : 'Traslado adicional sí'}">
+                    🚚 Sí
+                </span>
+                ${extraInfo ? `<span style="font-size: 9.5px; color: #34d399; font-weight: 600; white-space: nowrap;">${extraInfo}</span>` : ''}
+            </div>
+        `;
+    }
+    return '<span class="badge-traslado-no">No</span>';
+};
+
 // Flota Table con soporte completo por Solapa
 window.renderFlotaTable = function() {
     const tbody = document.getElementById('flota-table-body');
@@ -2834,10 +3570,14 @@ window.renderFlotaTable = function() {
     if (appData.searchQuery && appData.searchQuery.trim() !== '') {
         const q = appData.searchQuery.toLowerCase();
         list = list.filter(x => 
-            x.code.toLowerCase().includes(q) ||
+            (x.code && x.code.toLowerCase().includes(q)) ||
             (x.cliente && x.cliente.toLowerCase().includes(q)) ||
             (x.ubicacion && x.ubicacion.toLowerCase().includes(q)) ||
-            (x.tipo && x.tipo.toLowerCase().includes(q))
+            (x.tipo && x.tipo.toLowerCase().includes(q)) ||
+            (x.proveedor && x.proveedor.toLowerCase().includes(q)) ||
+            (x.traslado && x.traslado.toLowerCase().includes(q)) ||
+            (x.trasladoMonto && x.trasladoMonto.toLowerCase().includes(q)) ||
+            (x.trasladoHoras && x.trasladoHoras.toLowerCase().includes(q))
         );
     }
 
@@ -2876,7 +3616,7 @@ window.renderFlotaTable = function() {
     }
 
     if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 28px; color: #94a3b8;">
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 28px; color: #94a3b8;">
             <i class="fas fa-search" style="font-size: 24px; margin-bottom: 6px; display: block; opacity: 0.5;"></i>
             No se encontraron contenedores para la solapa y filtros seleccionados.<br>
             <button class="btn btn-secondary btn-sm" onclick="resetFlotaFilters()" style="margin-top: 8px;">Restablecer solapa y filtros</button>
@@ -2884,8 +3624,33 @@ window.renderFlotaTable = function() {
         return;
     }
 
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarFlota: true, puedeEditarTaller: true };
+
     tbody.innerHTML = list.map(c => {
         const tareasCount = Array.isArray(c.tareas) ? c.tareas.length : 0;
+        let tareasColHtml = '';
+        if (p.puedeEditarTaller) {
+            tareasColHtml = tareasCount > 0 ? 
+                `<button class="btn btn-warning btn-sm" onclick="abrirModalMantenimiento('${c.code}')" title="${c.tareas.join(', ')}">🔧 ${tareasCount} tarea(s)</button>` : 
+                `<button class="btn btn-secondary btn-sm" onclick="abrirModalMantenimiento('${c.code}')" style="opacity: 0.6;">+ Tarea</button>`;
+        } else {
+            tareasColHtml = tareasCount > 0 ?
+                `<span style="font-size: 11px; color: #f59e0b; font-weight: 600;"><i class="fas fa-wrench"></i> ${tareasCount} pend.</span>` :
+                `<span style="font-size: 11px; color: #10b981;">✓ Ok</span>`;
+        }
+
+        let botonesAccion = `
+            <button class="btn btn-secondary btn-sm" onclick="abrirModalFicha('${c.code}')" title="Ver Ficha Técnica">👁️</button>
+            <button class="btn btn-secondary btn-sm" onclick="verContenedorEnMapa('${c.code}')" title="Ver en el Mapa" style="color: #38bdf8; border-color: rgba(56,189,248,0.4);"><i class="fas fa-map-marker-alt"></i></button>
+        `;
+        if (p.puedeEditarFlota) {
+            botonesAccion += `<button class="btn btn-primary btn-sm" onclick="abrirModalEditarContenedor('${c.code}')" title="Editar / Mover">✏️</button>`;
+        }
+        botonesAccion += `<button class="btn btn-success btn-sm" onclick="imprimirRemitoPorCodigo('${c.code}', '${c.estado === 'alquilado' ? 'entrega' : 'devolucion'}')" title="Imprimir Remito">📄</button>`;
+        if (p.puedeEditarFlota) {
+            botonesAccion += `<button class="btn btn-danger btn-sm" onclick="eliminarContenedor('${c.code}')" title="Dar de baja">🗑️</button>`;
+        }
+
         return `
         <tr>
             <td style="font-family: monospace; font-size: 12.5px; font-weight: 800; color: #38bdf8; cursor: pointer;" onclick="abrirModalFicha('${c.code}')" title="Ver ficha">
@@ -2893,33 +3658,22 @@ window.renderFlotaTable = function() {
             </td>
             <td><strong>${c.tipo}</strong></td>
             <td><span style="font-weight: 600;">${c.medida}</span></td>
+            <td>${renderBadgeProveedor(c)}</td>
             <td>${renderBadgeEstado(c.estado)}</td>
             <td>
                 ${c.pago === 'retrasado' ? 
                     '<span class="badge-pago-retrasado"><i class="fas fa-exclamation-circle"></i> Retrasado</span>' : 
                     '<span class="badge-pago-ok"><i class="fas fa-check"></i> Al Día</span>'}
             </td>
+            <td>${renderBadgeTraslado(c)}</td>
             <td>
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
-                    ${((c.proveedor || '').toUpperCase().includes('SG') || (c.proveedor || '').toUpperCase().includes('MONTAJES')) 
-                        ? '<span style="font-size: 9.5px; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 3px; padding: 1px 4px; font-weight: bold;">⚙️ SG</span>' 
-                        : '<span style="font-size: 9.5px; background: rgba(2, 132, 199, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 3px; padding: 1px 4px; font-weight: bold;">🔵 Acosta</span>'}
-                    <strong>${c.cliente || '<span style="color:#94a3b8;">(Disponible en Base)</span>'}</strong>
-                </div>
+                <div style="font-weight: bold; color: #ffffff;">${c.cliente || '<span style="color:#94a3b8; font-weight: normal;">(Disponible en Base)</span>'}</div>
                 <div style="font-size: 10.5px; color: #94a3b8;">${c.ubicacion || 'Base Operativa Timbúes'}</div>
             </td>
-            <td>
-                ${tareasCount > 0 ? 
-                    `<button class="btn btn-warning btn-sm" onclick="abrirModalMantenimiento('${c.code}')" title="${c.tareas.join(', ')}">🔧 ${tareasCount} tarea(s)</button>` : 
-                    `<button class="btn btn-secondary btn-sm" onclick="abrirModalMantenimiento('${c.code}')" style="opacity: 0.6;">+ Tarea</button>`}
-            </td>
+            <td>${tareasColHtml}</td>
             <td>
                 <div style="display: flex; gap: 4px;">
-                    <button class="btn btn-secondary btn-sm" onclick="abrirModalFicha('${c.code}')" title="Ver Ficha Técnica">👁️</button>
-                    <button class="btn btn-secondary btn-sm" onclick="verContenedorEnMapa('${c.code}')" title="Ver en el Mapa" style="color: #38bdf8; border-color: rgba(56,189,248,0.4);"><i class="fas fa-map-marker-alt"></i></button>
-                    <button class="btn btn-primary btn-sm" onclick="abrirModalEditarContenedor('${c.code}')" title="Editar / Mover">✏️</button>
-                    <button class="btn btn-success btn-sm" onclick="imprimirRemitoPorCodigo('${c.code}', '${c.estado === 'alquilado' ? 'entrega' : 'devolucion'}')" title="Imprimir Remito">📄</button>
-                    <button class="btn btn-danger btn-sm" onclick="eliminarContenedor('${c.code}')" title="Dar de baja">🗑️</button>
+                    ${botonesAccion}
                 </div>
             </td>
         </tr>
@@ -2983,7 +3737,7 @@ window.renderAlquileresTable = function() {
     const hoy = new Date();
 
     if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: #94a3b8;">No hay alquileres activos actualmente.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 24px; color: #94a3b8;">No hay alquileres activos actualmente.</td></tr>`;
         return;
     }
 
@@ -3001,24 +3755,603 @@ window.renderAlquileresTable = function() {
             }
         }
 
+        const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarAlquileres: true };
+        let botonesAccionAlquiler = '';
+        if (p.puedeEditarAlquileres) {
+            botonesAccionAlquiler += `<button class="btn btn-warning btn-sm" onclick="abrirModalProrroga('${c.code}')" title="Prorrogar fecha de retiro">⏳ Prórroga</button>`;
+            botonesAccionAlquiler += `<button class="btn btn-success btn-sm" onclick="abrirModalDevolucion('${c.code}')" title="Registrar devolución a base">📦 Devolución</button>`;
+        }
+        botonesAccionAlquiler += `<button class="btn btn-primary btn-sm" onclick="imprimirRemitoPorCodigo('${c.code}', 'entrega')" title="Descargar Remito">📄 Remito</button>`;
+
         return `
         <tr>
-            <td style="font-family: monospace; font-weight: 800; color: #38bdf8;">${c.code}</td>
+            <td style="font-family: monospace; font-weight: 800; color: #38bdf8; cursor: pointer;" onclick="abrirModalFicha('${c.code}')">${c.code}</td>
             <td><strong>${c.tipo}</strong> (${c.medida})</td>
+            <td>${renderBadgeProveedor(c)}</td>
             <td><strong style="color: #ffffff;">${c.cliente || '-'}</strong></td>
             <td>${c.ubicacion || '-'}</td>
+            <td>${renderBadgeTraslado(c)}</td>
             <td><span style="font-family: monospace;">${c.entrega || '-'}</span></td>
             <td><span style="font-family: monospace; font-weight: bold;">${c.retiro || '-'}</span></td>
             <td>${vencimientoBadge}</td>
             <td>
                 <div style="display: flex; gap: 4px;">
-                    <button class="btn btn-warning btn-sm" onclick="abrirModalProrroga('${c.code}')" title="Prorrogar fecha de retiro">⏳ Prórroga</button>
-                    <button class="btn btn-success btn-sm" onclick="abrirModalDevolucion('${c.code}')" title="Registrar devolución a base">📦 Devolución</button>
-                    <button class="btn btn-primary btn-sm" onclick="imprimirRemitoPorCodigo('${c.code}', 'entrega')" title="Descargar Remito">📄 Remito</button>
+                    ${botonesAccionAlquiler}
                 </div>
             </td>
         </tr>
     `}).join('');
+};
+
+// =========================================================
+// MÓDULO: SEGUIMIENTO & TRAZABILIDAD INTEGRAL DE CONTENEDORES
+// Registra: Salida, Cliente, Entrada, Fechas, Proveedor, Traslado
+// =========================================================
+
+const SEGUIMIENTO_STORAGE_KEY = 'ANTY_SEGUIMIENTO_MOVIMIENTOS_V1';
+if (!appData.seguimientoFiltro) appData.seguimientoFiltro = 'todos';
+if (!appData.seguimientoSearch) appData.seguimientoSearch = '';
+
+window.cargarSeguimientoData = function() {
+    try {
+        const stored = localStorage.getItem(SEGUIMIENTO_STORAGE_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                appData.seguimientoMovimientos = parsed;
+                return;
+            }
+        }
+    } catch(e) {
+        console.warn("Error leyendo seguimiento de localStorage:", e);
+    }
+
+    // Si no hay datos previos, auto-poblar a partir de los contenedores actuales y generar historial
+    appData.seguimientoMovimientos = [];
+
+    // 1. Salidas activas para los contenedores alquilados actualmente
+    const alquilados = (appData.contenedores || []).filter(c => c.estado === 'alquilado' || c.estado === 'reservado');
+    alquilados.forEach((c, idx) => {
+        appData.seguimientoMovimientos.push({
+            id: 'seg_' + (Date.now() - (idx + 1) * 86400000) + '_' + c.code,
+            code: c.code,
+            tipo: c.tipo,
+            medida: c.medida,
+            proveedor: c.proveedor || 'ACOSTA SERVICIOS SRL',
+            cliente: c.cliente || 'Empresa Contratista',
+            fechaSalida: c.entrega || new Date().toISOString().split('T')[0],
+            horaSalida: '09:00',
+            destino: c.ubicacion || 'Obra Parque Industrial',
+            fechaEntrada: '', // Aún en obra
+            horaEntrada: '',
+            retiroEstimado: c.retiro || '',
+            estadoMovimiento: 'en_obra',
+            traslado: c.traslado || 'no',
+            trasladoMonto: c.trasladoMonto || '',
+            trasladoHoras: c.trasladoHoras || '',
+            observaciones: c.observaciones || 'Despacho conforme a cliente.',
+            remitoNumero: 'REM-' + (100 + idx)
+        });
+    });
+
+    // 2. Entradas a Base ya completadas (historial de unidades devueltas)
+    const enBase = (appData.contenedores || []).filter(c => c.estado === 'empresa').slice(0, 5);
+    const clientesHist = ['Techint Ingeniería', 'Pampa Energía S.A.', 'YPF Desarrollos', 'Cinter SRL', 'Milicic S.A.'];
+    const obrasHist = ['Planta Bunge Puerto General San Martín', 'Renova Timbúes — Muelle', 'Terminal 6 San Lorenzo', 'Cofco PGSM', 'Central Termoeléctrica San Martín'];
+
+    enBase.forEach((c, idx) => {
+        const dSal = new Date();
+        dSal.setDate(dSal.getDate() - (45 + idx * 10));
+        const dEnt = new Date();
+        dEnt.setDate(dEnt.getDate() - (5 + idx * 5));
+
+        appData.seguimientoMovimientos.push({
+            id: 'seg_hist_' + (Date.now() - (idx + 10) * 86400000) + '_' + c.code,
+            code: c.code,
+            tipo: c.tipo,
+            medida: c.medida,
+            proveedor: c.proveedor || (idx % 2 === 0 ? 'SG Montajes' : 'ACOSTA SERVICIOS SRL'),
+            cliente: clientesHist[idx % clientesHist.length],
+            fechaSalida: dSal.toISOString().split('T')[0],
+            horaSalida: '08:15',
+            destino: obrasHist[idx % obrasHist.length],
+            fechaEntrada: dEnt.toISOString().split('T')[0],
+            horaEntrada: '16:30',
+            retiroEstimado: dEnt.toISOString().split('T')[0],
+            estadoMovimiento: 'en_base',
+            traslado: idx % 2 === 0 ? 'si' : 'no',
+            trasladoMonto: idx % 2 === 0 ? '95000' : '',
+            trasladoHoras: idx % 2 === 0 ? '4' : '',
+            observaciones: 'Reingreso a base con inspección técnica aprobada.',
+            remitoNumero: 'REM-00' + (40 + idx)
+        });
+    });
+
+    guardarSeguimientoData();
+};
+
+window.guardarSeguimientoData = function() {
+    try {
+        localStorage.setItem(SEGUIMIENTO_STORAGE_KEY, JSON.stringify(appData.seguimientoMovimientos || []));
+    } catch(e) {
+        console.warn("Error guardando seguimiento en localStorage:", e);
+    }
+};
+
+window.renderSeguimientoTable = function() {
+    const tbody = document.getElementById('seguimiento-table-body');
+    if (!tbody) return;
+
+    if (!Array.isArray(appData.seguimientoMovimientos) || appData.seguimientoMovimientos.length === 0) {
+        cargarSeguimientoData();
+    }
+
+    const movimientos = appData.seguimientoMovimientos || [];
+
+    // Calcular KPIs
+    const total = movimientos.length;
+    const salidasActivas = movimientos.filter(m => m.estadoMovimiento === 'en_obra' || (!m.fechaEntrada && m.fechaSalida)).length;
+    const entradas = movimientos.filter(m => m.estadoMovimiento === 'en_base' || (m.fechaEntrada && m.fechaEntrada.trim() !== '')).length;
+    const traslados = movimientos.filter(m => m.traslado === 'si' || (typeof m.traslado === 'object' && m.traslado && m.traslado.activo)).length;
+
+    const elTotal = document.getElementById('kpi-seg-total');
+    const elSalidas = document.getElementById('kpi-seg-salidas');
+    const elEntradas = document.getElementById('kpi-seg-entradas');
+    const elTraslados = document.getElementById('kpi-seg-traslados');
+
+    if (elTotal) elTotal.textContent = total;
+    if (elSalidas) elSalidas.textContent = salidasActivas;
+    if (elEntradas) elEntradas.textContent = entradas;
+    if (elTraslados) elTraslados.textContent = traslados;
+
+    // Aplicar Filtros y Búsqueda
+    const filtro = appData.seguimientoFiltro || 'todos';
+    const busqueda = (appData.seguimientoSearch || '').toLowerCase().trim();
+
+    let list = movimientos.slice();
+
+    // Ordenar de más reciente a más antiguo
+    list.sort((a, b) => {
+        const fA = a.fechaSalida || a.fechaEntrada || '';
+        const fB = b.fechaSalida || b.fechaEntrada || '';
+        return fB.localeCompare(fA);
+    });
+
+    if (filtro === 'salidas') {
+        list = list.filter(m => m.estadoMovimiento === 'en_obra' || (!m.fechaEntrada && m.fechaSalida));
+    } else if (filtro === 'entradas') {
+        list = list.filter(m => m.estadoMovimiento === 'en_base' || (m.fechaEntrada && m.fechaEntrada.trim() !== ''));
+    } else if (filtro === 'acosta') {
+        list = list.filter(m => (m.proveedor || '').toLowerCase().includes('acosta'));
+    } else if (filtro === 'sg') {
+        list = list.filter(m => (m.proveedor || '').toLowerCase().includes('sg'));
+    } else if (filtro === 'traslado') {
+        list = list.filter(m => m.traslado === 'si' || (typeof m.traslado === 'object' && m.traslado && m.traslado.activo));
+    }
+
+    if (busqueda) {
+        list = list.filter(m => {
+            const code = (m.code || '').toLowerCase();
+            const cli = (m.cliente || '').toLowerCase();
+            const prov = (m.proveedor || '').toLowerCase();
+            const dest = (m.destino || '').toLowerCase();
+            const obs = (m.observaciones || '').toLowerCase();
+            return code.includes(busqueda) || cli.includes(busqueda) || prov.includes(busqueda) || dest.includes(busqueda) || obs.includes(busqueda);
+        });
+    }
+
+    if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 30px; color: #94a3b8;">
+            <i class="fas fa-search" style="font-size: 24px; margin-bottom: 8px; color: #64748b;"></i><br>
+            No se encontraron movimientos registrados con el filtro o búsqueda seleccionada.
+        </td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = list.map(m => {
+        // Buscar el contenedor en la flota para obtener el objeto actualizado
+        const contFlota = (appData.contenedores || []).find(x => x.code === m.code) || {
+            code: m.code,
+            tipo: m.tipo || 'Módulo',
+            medida: m.medida || "20'",
+            proveedor: m.proveedor || 'ACOSTA SERVICIOS SRL'
+        };
+
+        // Render badge proveedor
+        const provBadge = renderBadgeProveedor(contFlota);
+
+        // Render badge traslado
+        let trasladoBadge = '<span class="badge-traslado-no">No</span>';
+        const tieneTraslado = m.traslado === 'si' || (typeof m.traslado === 'object' && m.traslado && m.traslado.activo);
+        if (tieneTraslado) {
+            const monto = m.trasladoMonto ? `$${Number(m.trasladoMonto).toLocaleString('es-AR')}` : '';
+            const horas = m.trasladoHoras ? `${m.trasladoHoras}hs` : '';
+            const extra = [monto, horas].filter(Boolean).join(' • ');
+            trasladoBadge = `<span class="badge-traslado-si" title="${extra ? 'Detalle: ' + extra : 'Con traslado adicional'}">
+                <i class="fas fa-truck"></i> Sí ${extra ? `<small style="font-weight: normal; opacity: 0.9;">(${extra})</small>` : ''}
+            </span>`;
+        }
+
+        // Estado del movimiento
+        const estaEnBase = m.estadoMovimiento === 'en_base' || (m.fechaEntrada && m.fechaEntrada.trim() !== '');
+        let estadoBadge = estaEnBase
+            ? `<span class="badge-mov-entrada"><i class="fas fa-warehouse"></i> En Base</span>`
+            : `<span class="badge-mov-salida"><i class="fas fa-hard-hat"></i> En Obra</span>`;
+
+        // Columna Salida
+        const salidaHtml = `
+            <div>
+                <span style="font-family: monospace; font-weight: bold; color: #fbbf24; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="fas fa-calendar-minus"></i> ${m.fechaSalida || '-'}
+                </span>
+                ${m.horaSalida ? `<span style="font-size: 11px; color: #94a3b8; margin-left: 4px;">(${m.horaSalida})</span>` : ''}
+                <div style="font-size: 11.5px; color: #cbd5e1; margin-top: 3px; display: flex; align-items: center; gap: 4px;">
+                    <i class="fas fa-map-marker-alt" style="color: #38bdf8; font-size: 10px;"></i>
+                    <span>${m.destino || 'Destino no especificado'}</span>
+                </div>
+            </div>
+        `;
+
+        // Columna Entrada
+        let entradaHtml = '';
+        if (estaEnBase) {
+            entradaHtml = `
+                <div>
+                    <span style="font-family: monospace; font-weight: bold; color: #10b981; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fas fa-calendar-check"></i> ${m.fechaEntrada}
+                    </span>
+                    ${m.horaEntrada ? `<span style="font-size: 11px; color: #94a3b8; margin-left: 4px;">(${m.horaEntrada})</span>` : ''}
+                    <div style="font-size: 11px; color: #34d399; margin-top: 3px;">
+                        <i class="fas fa-warehouse"></i> Base Operativa Timbúes
+                    </div>
+                </div>
+            `;
+        } else {
+            entradaHtml = `
+                <div>
+                    <span class="badge-mov-salida" style="font-size: 10.5px;">
+                        <i class="fas fa-clock"></i> Pendiente (En Obra)
+                    </span>
+                    ${m.retiroEstimado ? `<div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Est. retorno: ${m.retiroEstimado}</div>` : ''}
+                </div>
+            `;
+        }
+
+        const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarSeguimiento: true };
+        // Botones de acción
+        let accionEntradaBtn = '';
+        if (!estaEnBase && p.puedeEditarSeguimiento) {
+            accionEntradaBtn = `<button class="btn btn-success btn-sm" onclick="marcarEntradaSeguimiento('${m.id}')" title="Registrar Entrada y Retorno a Base" style="padding: 3px 8px; font-size: 11px;">
+                <i class="fas fa-warehouse"></i> Entrada a Base
+            </button>`;
+        }
+
+        return `
+        <tr>
+            <td>
+                <span style="font-family: monospace; font-weight: 800; font-size: 13.5px; color: #38bdf8; cursor: pointer;" onclick="abrirModalFicha('${m.code}')" title="Ver ficha técnica">
+                    ${m.code}
+                </span>
+                <div style="font-size: 11px; color: #94a3b8;">${m.tipo || contFlota.tipo} (${m.medida || contFlota.medida})</div>
+            </td>
+            <td>${provBadge}</td>
+            <td>
+                <strong style="color: #ffffff; font-size: 12.5px;">${m.cliente || '-'}</strong>
+                ${m.observaciones ? `<div style="font-size: 10.5px; color: #94a3b8; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${m.observaciones}">💬 ${m.observaciones}</div>` : ''}
+            </td>
+            <td>${salidaHtml}</td>
+            <td>${entradaHtml}</td>
+            <td>${estadoBadge}</td>
+            <td>${trasladoBadge}</td>
+            <td>
+                <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
+                    ${accionEntradaBtn}
+                    <button class="btn btn-primary btn-sm" onclick="imprimirRemitoPorCodigo('${m.code}', 'entrega')" title="Ver / Descargar Remito" style="padding: 3px 8px; font-size: 11px;">
+                        <i class="fas fa-file-invoice"></i> Remito
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="abrirModalFicha('${m.code}')" title="Ver Ficha Completa" style="padding: 3px 6px; font-size: 11px;">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+        `;
+    }).join('');
+};
+
+window.filtrarSeguimiento = function(filtro) {
+    appData.seguimientoFiltro = filtro;
+    document.querySelectorAll('.chip-filtro-seguimiento').forEach(btn => {
+        if (btn.getAttribute('data-filter') === filtro) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    renderSeguimientoTable();
+};
+
+window.buscarEnSeguimiento = function(texto) {
+    appData.seguimientoSearch = texto || '';
+    renderSeguimientoTable();
+};
+
+window.marcarEntradaSeguimiento = function(movId) {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarSeguimiento: true };
+    if (!p.puedeEditarSeguimiento) {
+        showToast("No tienes permisos para registrar entradas a base.", "warning");
+        return;
+    }
+    const mov = (appData.seguimientoMovimientos || []).find(x => x.id === movId);
+    if (!mov) return;
+
+    if (confirm(`¿Confirma el reingreso y recepción del contenedor ${mov.code} a Base Operativa Timbúes?\nCliente: ${mov.cliente || '-'}\nObra: ${mov.destino || '-'}`)) {
+        const hoy = new Date().toISOString().split('T')[0];
+        const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        mov.fechaEntrada = hoy;
+        mov.horaEntrada = hora;
+        mov.estadoMovimiento = 'en_base';
+
+        // Actualizar el contenedor en la flota general si correspondía
+        const cont = (appData.contenedores || []).find(x => x.code === mov.code);
+        if (cont && cont.estado === 'alquilado') {
+            cont.estado = 'empresa';
+            cont.cliente = '';
+            cont.ubicacion = appData.settings.deposito_principal || 'Base Operativa — Timbúes';
+            const baseCoords = window.obtenerCoordenadasPorUbicacion ? window.obtenerCoordenadasPorUbicacion(cont.ubicacion) : { lat: -32.6642, lng: -60.7932 };
+            cont.lat = baseCoords.lat;
+            cont.lng = baseCoords.lng;
+            cont.retiro = '';
+        }
+
+        saveData();
+        guardarSeguimientoData();
+        try { window.guardarSeguimientoEnSupabase(mov); } catch(e) {}
+
+        renderHeaderStats();
+        renderDashboard();
+        renderFlotaTable();
+        renderAlquileresTable();
+        renderSeguimientoTable();
+
+        if (appData.markersGroup) populateMarkers(appData.markersGroup, false);
+        if (appData.dashMarkersGroup) populateMarkers(appData.dashMarkersGroup, true);
+
+        showToast(`✓ Entrada registrada: Contenedor ${mov.code} reingresó a Base Timbúes.`, "success");
+
+        try {
+            logOperationalEvent('devolucion', `Entrada y recepción en base de ${mov.code} (Cliente: "${mov.cliente}")`, mov.code);
+            sendLiveSignal({ type: 'DATA_UPDATE' });
+        } catch(e) {}
+    }
+};
+
+window.abrirModalRegistroMovimiento = function(codePreseleccionado, tipoPreseleccionado) {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarSeguimiento: true };
+    if (!p.puedeEditarSeguimiento) {
+        showToast("No tienes permisos para registrar movimientos de seguimiento.", "warning");
+        return;
+    }
+    const modal = document.getElementById('modal-registro-movimiento');
+    if (!modal) return;
+
+    // Poblar select de contenedores
+    const sel = document.getElementById('mov-form-code');
+    if (sel) {
+        const list = (appData.contenedores || []).slice().sort((a,b) => a.code.localeCompare(b.code));
+        sel.innerHTML = list.map(c => `
+            <option value="${c.code}">${c.code} — ${c.tipo} (${c.medida}) [${(c.proveedor || '').includes('SG') ? '⚙️ SG' : '🔵 Acosta'}]</option>
+        `).join('');
+
+        if (codePreseleccionado) {
+            sel.value = codePreseleccionado;
+        }
+    }
+
+    const hoy = new Date().toISOString().split('T')[0];
+    const idInp = document.getElementById('mov-form-id');
+    const tipoInp = document.getElementById('mov-form-tipo');
+    const fSalida = document.getElementById('mov-form-fecha-salida');
+    const fEntrada = document.getElementById('mov-form-fecha-entrada');
+    const cliInp = document.getElementById('mov-form-cliente');
+    const ubInp = document.getElementById('mov-form-ubicacion');
+    const obsInp = document.getElementById('mov-form-obs');
+    const trasInp = document.getElementById('mov-form-traslado');
+    const trasMonto = document.getElementById('mov-form-traslado-monto');
+    const trasHoras = document.getElementById('mov-form-traslado-horas');
+    const trasDet = document.getElementById('mov-form-traslado-detalle');
+
+    if (idInp) idInp.value = '';
+    if (tipoInp) tipoInp.value = tipoPreseleccionado || 'salida';
+    if (fSalida) fSalida.value = hoy;
+    if (fEntrada) fEntrada.value = '';
+    if (cliInp) cliInp.value = '';
+    if (ubInp) ubInp.value = '';
+    if (obsInp) obsInp.value = '';
+    if (trasInp) trasInp.value = 'no';
+    if (trasMonto) trasMonto.value = '';
+    if (trasHoras) trasHoras.value = '';
+    if (trasDet) trasDet.style.display = 'none';
+
+    // Disparar sincronización con el contenedor seleccionado
+    if (sel && sel.value) {
+        alCambiarContenedorEnMovimiento(sel.value);
+    }
+    alCambiarTipoMovimiento(tipoPreseleccionado || 'salida');
+
+    modal.style.display = 'flex';
+};
+
+window.alCambiarTipoMovimiento = function(tipo) {
+    const lblSalida = document.getElementById('lbl-mov-fecha-salida');
+    const lblEntrada = document.getElementById('lbl-mov-fecha-entrada');
+    const fEntrada = document.getElementById('mov-form-fecha-entrada');
+    const ubInp = document.getElementById('mov-form-ubicacion');
+
+    if (tipo === 'entrada') {
+        if (lblEntrada) lblEntrada.innerHTML = '<i class="fas fa-calendar-plus" style="color: #10b981;"></i> Fecha de Entrada a Base *';
+        if (fEntrada) {
+            if (!fEntrada.value) fEntrada.value = new Date().toISOString().split('T')[0];
+            fEntrada.required = true;
+        }
+        if (ubInp && !ubInp.value) ubInp.value = 'Base Operativa — Timbúes';
+    } else {
+        if (lblEntrada) lblEntrada.innerHTML = '<i class="fas fa-calendar-plus"></i> Fecha de Entrada (Reingreso)';
+        if (fEntrada) fEntrada.required = false;
+        if (ubInp && ubInp.value === 'Base Operativa — Timbúes') ubInp.value = '';
+    }
+};
+
+window.alCambiarContenedorEnMovimiento = function(code) {
+    const c = (appData.contenedores || []).find(x => x.code === code);
+    if (!c) return;
+
+    const provSel = document.getElementById('mov-form-proveedor');
+    if (provSel) {
+        provSel.value = (c.proveedor && c.proveedor.includes('SG')) ? 'SG Montajes' : 'ACOSTA SERVICIOS SRL';
+    }
+
+    const cliInp = document.getElementById('mov-form-cliente');
+    const ubInp = document.getElementById('mov-form-ubicacion');
+    if (cliInp && c.cliente) cliInp.value = c.cliente;
+    if (ubInp && c.ubicacion) ubInp.value = c.ubicacion;
+
+    const traslSel = document.getElementById('mov-form-traslado');
+    const traslMonto = document.getElementById('mov-form-traslado-monto');
+    const traslHoras = document.getElementById('mov-form-traslado-horas');
+    if (c.traslado === 'si' || (typeof c.traslado === 'object' && c.traslado && c.traslado.activo)) {
+        if (traslSel) traslSel.value = 'si';
+        if (traslMonto) traslMonto.value = c.trasladoMonto || '';
+        if (traslHoras) traslHoras.value = c.trasladoHoras || '';
+        onMovimientoTrasladoChange('si');
+    }
+};
+
+window.onMovimientoTrasladoChange = function(val) {
+    const det = document.getElementById('mov-form-traslado-detalle');
+    if (det) {
+        det.style.display = (val === 'si') ? 'grid' : 'none';
+    }
+};
+
+window.guardarNuevoMovimientoForm = function(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarSeguimiento: true };
+    if (!p.puedeEditarSeguimiento) {
+        showToast("No tienes permisos para guardar movimientos de seguimiento.", "warning");
+        return;
+    }
+
+    const code = document.getElementById('mov-form-code').value;
+    const tipoMov = document.getElementById('mov-form-tipo').value;
+    const prov = document.getElementById('mov-form-proveedor').value;
+    const cliente = document.getElementById('mov-form-cliente').value.trim();
+    const ubicacion = document.getElementById('mov-form-ubicacion').value.trim();
+    const fechaSalida = document.getElementById('mov-form-fecha-salida').value;
+    const fechaEntrada = document.getElementById('mov-form-fecha-entrada').value;
+    const traslado = document.getElementById('mov-form-traslado').value;
+    const trasladoMonto = document.getElementById('mov-form-traslado-monto').value.trim();
+    const trasladoHoras = document.getElementById('mov-form-traslado-horas').value.trim();
+    const obs = document.getElementById('mov-form-obs').value.trim();
+
+    if (!code) {
+        showToast("Seleccione un contenedor.", "warning");
+        return;
+    }
+
+    const cont = (appData.contenedores || []).find(x => x.code === code);
+    const ahora = new Date();
+
+    const nuevoMov = {
+        id: 'mov_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        code: code,
+        tipo: cont ? cont.tipo : 'Módulo',
+        medida: cont ? cont.medida : "20'",
+        proveedor: prov,
+        cliente: cliente || 'Sin cliente especificado',
+        fechaSalida: fechaSalida || ahora.toISOString().split('T')[0],
+        horaSalida: ahora.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        destino: ubicacion || (tipoMov === 'entrada' ? 'Base Operativa — Timbúes' : 'Obra'),
+        fechaEntrada: fechaEntrada || (tipoMov === 'entrada' ? ahora.toISOString().split('T')[0] : ''),
+        horaEntrada: tipoMov === 'entrada' ? ahora.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+        retiroEstimado: cont ? (cont.retiro || '') : '',
+        estadoMovimiento: (tipoMov === 'entrada' || (fechaEntrada && fechaEntrada.trim() !== '')) ? 'en_base' : 'en_obra',
+        traslado: traslado,
+        trasladoMonto: trasladoMonto,
+        trasladoHoras: trasladoHoras,
+        observaciones: obs,
+        remitoNumero: 'REM-' + Math.floor(100 + Math.random() * 900),
+        usuario: appData.currentUser ? appData.currentUser.username : 'admin',
+        timestamp: ahora.toISOString()
+    };
+
+    if (!Array.isArray(appData.seguimientoMovimientos)) appData.seguimientoMovimientos = [];
+    appData.seguimientoMovimientos.unshift(nuevoMov);
+    guardarSeguimientoData();
+    try { window.guardarSeguimientoEnSupabase(nuevoMov); } catch(e) {}
+
+    // Sincronizar contenedor en la flota
+    if (cont) {
+        cont.proveedor = prov;
+        if (tipoMov === 'salida') {
+            cont.estado = 'alquilado';
+            cont.cliente = cliente;
+            cont.ubicacion = ubicacion;
+            cont.entrega = fechaSalida;
+            cont.traslado = traslado;
+            cont.trasladoMonto = trasladoMonto;
+            cont.trasladoHoras = trasladoHoras;
+        } else if (tipoMov === 'entrada') {
+            cont.estado = 'empresa';
+            cont.cliente = '';
+            cont.ubicacion = 'Base Operativa — Timbúes';
+            cont.retiro = '';
+        }
+        saveData();
+    }
+
+    cerrarModales();
+    renderHeaderStats();
+    renderDashboard();
+    renderFlotaTable();
+    renderAlquileresTable();
+    renderSeguimientoTable();
+
+    showToast(`✓ Movimiento de ${tipoMov === 'salida' ? 'Salida' : 'Entrada'} para ${code} guardado con éxito.`, "success");
+
+    try {
+        logOperationalEvent(tipoMov === 'salida' ? 'alquiler' : 'devolucion', `Registro de ${tipoMov === 'salida' ? 'Salida' : 'Entrada'} para contenedor ${code} (${prov}, Cliente: "${cliente}")`, code);
+        sendLiveSignal({ type: 'DATA_UPDATE' });
+    } catch(err) {}
+};
+
+window.exportarSeguimientoExcel = function() {
+    const list = appData.seguimientoMovimientos || [];
+    if (list.length === 0) {
+        showToast("No hay movimientos para exportar.", "warning");
+        return;
+    }
+
+    let csv = "\uFEFF"; // BOM para acentos en Excel
+    csv += "CÓDIGO;TIPO;MEDIDA;PROVEEDOR;CLIENTE;FECHA_SALIDA;HORA_SALIDA;DESTINO_OBRA;FECHA_ENTRADA_BASE;HORA_ENTRADA;ESTADO;TRASLADO_ADICIONAL;COSTO_TRASLADO;HORAS_CARGA;REMITO;OBSERVACIONES\n";
+
+    list.forEach(m => {
+        const trasladoTexto = (m.traslado === 'si' || (typeof m.traslado === 'object' && m.traslado && m.traslado.activo)) ? 'SÍ' : 'NO';
+        const estadoTexto = (m.estadoMovimiento === 'en_base' || m.fechaEntrada) ? 'EN BASE' : 'EN OBRA (SALIDA ACTIVA)';
+        csv += `"${m.code || ''}";"${m.tipo || ''}";"${m.medida || ''}";"${m.proveedor || ''}";"${m.cliente || ''}";"${m.fechaSalida || ''}";"${m.horaSalida || ''}";"${m.destino || ''}";"${m.fechaEntrada || ''}";"${m.horaEntrada || ''}";"${estadoTexto}";"${trasladoTexto}";"${m.trasladoMonto || 0}";"${m.trasladoHoras || 0}";"${m.remitoNumero || ''}";"${(m.observaciones || '').replace(/"/g, '""')}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Seguimiento_Trazabilidad_Contenedores_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showToast("✓ Archivo de Seguimiento exportado para Excel.", "success");
 };
 
 // Mantenimiento Board
@@ -3026,6 +4359,7 @@ window.renderMantenimientoBoard = function() {
     const cont = document.getElementById('mantenimiento-cards-container');
     if (!cont) return;
 
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarTaller: true };
     const listConTareas = (appData.contenedores || []).filter(x => Array.isArray(x.tareas) && x.tareas.length > 0);
 
     if (listConTareas.length === 0) {
@@ -3042,29 +4376,135 @@ window.renderMantenimientoBoard = function() {
                 <div>
                     <span style="font-family: monospace; font-size: 14px; font-weight: 800; color: #38bdf8;">${c.code}</span>
                     <strong style="margin-left: 6px;">${c.tipo} (${c.medida})</strong>
+                    <div style="margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                        ${renderBadgeProveedor(c)}
+                        ${renderBadgeTraslado(c)}
+                    </div>
                 </div>
                 ${renderBadgeEstado(c.estado)}
             </div>
             <div style="font-size: 11px; color: #94a3b8; margin-bottom: 10px;">
-                📍 ${c.ubicacion || 'Depósito Central'} • ${c.cliente || 'En base'}
+                📍 ${c.ubicacion || 'Base Operativa Timbúes'} • ${c.cliente || 'En base'}
             </div>
             <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
                 ${c.tareas.map((t, idx) => `
                     <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); padding: 5px 8px; border-radius: 4px; font-size: 11.5px;">
                         <span>🔧 ${t}</span>
-                        <button type="button" class="btn btn-success btn-sm" onclick="completarTarea('${c.code}', ${idx})" title="Marcar como completada">✓ Listo</button>
+                        ${p.puedeEditarTaller ? 
+                            `<button type="button" class="btn btn-success btn-sm" onclick="solicitarConfirmacionTarea('${c.code}', ${idx})" title="Marcar como completada">✓ Listo</button>` : 
+                            `<span style="font-size: 11px; color: #f59e0b; font-weight: 600;">Pendiente</span>`}
                     </div>
                 `).join('')}
             </div>
+            ${p.puedeEditarTaller ? `
             <div style="display: flex; justify-content: flex-end; gap: 6px;">
                 <button class="btn btn-secondary btn-sm" onclick="abrirModalMantenimiento('${c.code}')">+ Agregar Tarea</button>
-                <button class="btn btn-primary btn-sm" onclick="cambiarEstadoDirecto('${c.code}', 'empresa')">Mover a Base</button>
-            </div>
+                <button class="btn btn-primary btn-sm" onclick="solicitarConfirmacionMoverABase('${c.code}')">Mover a Base</button>
+            </div>` : ''}
         </div>
     `).join('');
 };
 
+// Confirmación previa para tareas de taller / mantenimiento
+window.solicitarConfirmacionTarea = function(code, idx) {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarTaller: true };
+    if (!p.puedeEditarTaller) {
+        showToast("No tienes permisos para modificar tareas de taller.", "warning");
+        return;
+    }
+    const cont = (appData.contenedores || []).find(x => x.code === code);
+    if (!cont || !Array.isArray(cont.tareas) || !cont.tareas[idx]) return;
+
+    const taskName = cont.tareas[idx];
+    const isLastTask = (cont.tareas.length === 1);
+
+    const modal = document.getElementById('modal-confirmar-tarea');
+    const textoEl = document.getElementById('modal-confirmar-tarea-texto');
+    const alertaEl = document.getElementById('modal-confirmar-tarea-alerta');
+    const btnConfirm = document.getElementById('btn-modal-confirmar-accion');
+
+    if (!modal) {
+        if (confirm(`¿Está seguro que desea dar por finalizada la tarea: "${taskName}" en ${code}?`)) {
+            completarTarea(code, idx);
+        }
+        return;
+    }
+
+    if (textoEl) {
+        textoEl.innerHTML = `¿Está seguro que desea dar por finalizada y marcar como <strong>Listo</strong> la tarea:<br><span style="display:inline-block; margin: 8px 0; color:#38bdf8; font-weight:bold; font-size:14px; background:rgba(56,189,248,0.1); padding: 4px 10px; border-radius:6px; border:1px solid rgba(56,189,248,0.3);">🔧 ${taskName}</span><br><span style="font-size:12px; color:#94a3b8;">Unidad: <strong>${code}</strong> (${cont.tipo})</span>`;
+    }
+
+    if (alertaEl) {
+        alertaEl.style.display = isLastTask ? 'block' : 'none';
+        if (isLastTask) {
+            alertaEl.innerHTML = `<i class="fas fa-info-circle"></i> Esta es la última tarea pendiente. La unidad pasará automáticamente a <strong>Disponible en Base</strong>.`;
+        }
+    }
+
+    if (btnConfirm) {
+        btnConfirm.onclick = function() {
+            cerrarModalConfirmarTarea();
+            completarTarea(code, idx);
+        };
+    }
+
+    modal.style.display = 'flex';
+};
+
+window.solicitarConfirmacionMoverABase = function(code) {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarTaller: true };
+    if (!p.puedeEditarTaller) {
+        showToast("No tienes permisos para mover unidades a base.", "warning");
+        return;
+    }
+    const cont = (appData.contenedores || []).find(x => x.code === code);
+    if (!cont) return;
+
+    const modal = document.getElementById('modal-confirmar-tarea');
+    const textoEl = document.getElementById('modal-confirmar-tarea-texto');
+    const alertaEl = document.getElementById('modal-confirmar-tarea-alerta');
+    const btnConfirm = document.getElementById('btn-modal-confirmar-accion');
+
+    if (!modal) {
+        if (confirm(`¿Está seguro que desea reincorporar la unidad ${code} a la Base Operativa?`)) {
+            cambiarEstadoDirecto(code, 'empresa');
+        }
+        return;
+    }
+
+    if (textoEl) {
+        textoEl.innerHTML = `¿Está seguro que desea finalizar el paso por taller y mover la unidad <strong>${code}</strong> a <strong>Disponible en Base</strong>?`;
+    }
+
+    if (alertaEl) {
+        const hasTasks = (cont.tareas && cont.tareas.length > 0);
+        alertaEl.style.display = hasTasks ? 'block' : 'none';
+        if (hasTasks) {
+            alertaEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> La unidad aún tiene <strong>${cont.tareas.length}</strong> tarea(s) pendiente(s). Al moverla a base continuará disponible para alquiler.`;
+        }
+    }
+
+    if (btnConfirm) {
+        btnConfirm.onclick = function() {
+            cerrarModalConfirmarTarea();
+            cambiarEstadoDirecto(code, 'empresa');
+        };
+    }
+
+    modal.style.display = 'flex';
+};
+
+window.cerrarModalConfirmarTarea = function() {
+    const modal = document.getElementById('modal-confirmar-tarea');
+    if (modal) modal.style.display = 'none';
+};
+
 window.completarTarea = function(code, idx) {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarTaller: true };
+    if (!p.puedeEditarTaller) {
+        showToast("No tienes permisos para completar tareas de taller.", "warning");
+        return;
+    }
     const cont = appData.contenedores.find(x => x.code === code);
     if (!cont || !Array.isArray(cont.tareas)) return;
     
@@ -3085,19 +4525,45 @@ function renderConfigUsuariosTable() {
     const tbody = document.getElementById('config-usuarios-table-body');
     if (!tbody) return;
 
-    tbody.innerHTML = (appData.users || []).map(u => `
-        <tr>
-            <td><strong style="color: #38bdf8;">${u.username}</strong></td>
-            <td>${u.nombre || '-'}</td>
-            <td>${u.email || '-'}</td>
-            <td><span class="badge-estado badge-empresa">${u.role || 'Operador'}</span></td>
-            <td>
-                <button class="btn btn-primary btn-sm" onclick="abrirModalEditarUsuario('${u.id}')">✏️ Editar</button>
-                ${u.username !== 'melani' && u.username !== 'admin' ? 
-                    `<button class="btn btn-danger btn-sm" onclick="eliminarUsuario('${u.id}')">🗑️</button>` : ''}
-            </td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = (appData.users || []).map(u => {
+        let pCont = u.permisos_contenedores || [];
+        if (typeof pCont === 'string') {
+            try { pCont = JSON.parse(pCont); } catch(e) { pCont = []; }
+        }
+        const cleanU = String(u.username || '').toLowerCase();
+        if ((cleanU === 'melani' || cleanU === 'admin' || cleanU === 'mel') && (!pCont || pCont.length === 0)) {
+            pCont = ['ver_flota', 'editar_flota', 'editar_alquileres', 'editar_seguimiento', 'editar_taller', 'ver_configuracion', 'ver_supabase'];
+        }
+        
+        let badgesHtml = '';
+        if (pCont.includes('ver_supabase') && pCont.includes('ver_configuracion')) {
+            badgesHtml = '<span class="badge-estado badge-disponible">Administrador Total</span>';
+        } else if (pCont.length === 0) {
+            badgesHtml = '<span class="badge-estado" style="background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid #ef4444;">Sin Acceso a Flota</span>';
+        } else {
+            const list = [];
+            if (pCont.includes('editar_seguimiento')) list.push('🚚 Seguimiento');
+            if (pCont.includes('editar_flota')) list.push('➕ Alta/Editar');
+            if (pCont.includes('editar_alquileres')) list.push('💼 Alquileres');
+            if (pCont.includes('editar_taller')) list.push('🛠️ Taller');
+            if (pCont.includes('ver_flota') && list.length === 0) list.push('👁️ Solo Lectura');
+            badgesHtml = list.map(b => `<span class="badge-estado badge-empresa" style="font-size: 10px; margin-right: 3px;">${b}</span>`).join(' ');
+        }
+
+        return `
+            <tr>
+                <td><strong style="color: #38bdf8;">${u.username}</strong></td>
+                <td>${u.nombre || '-'}</td>
+                <td>${u.email || '-'}</td>
+                <td>${badgesHtml}</td>
+                <td>
+                    <button class="btn btn-primary btn-sm" onclick="abrirModalEditarUsuario('${u.id}')">✏️ Permisos</button>
+                    ${u.username !== 'melani' && u.username !== 'admin' ? 
+                        `<button class="btn btn-danger btn-sm" onclick="eliminarUsuario('${u.id}')" title="Quitar acceso">🚫</button>` : ''}
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function renderConfigParametrosForm() {
@@ -3137,7 +4603,12 @@ window.abrirModalNuevoUsuario = function() {
     document.getElementById('user-form-password').value = '';
     document.getElementById('user-form-nombre').value = '';
     document.getElementById('user-form-email').value = '';
-    document.getElementById('user-form-role').value = 'Operador';
+    
+    // Checkboxes por defecto (solo lectura)
+    ['ver-flota', 'editar-flota', 'alquileres', 'seguimiento', 'taller', 'config', 'supabase'].forEach(k => {
+        const el = document.getElementById('user-perm-' + k);
+        if (el) el.checked = (k === 'ver-flota');
+    });
     modal.style.display = 'flex';
 };
 
@@ -3152,7 +4623,25 @@ window.abrirModalEditarUsuario = function(id) {
     document.getElementById('user-form-password').value = u.password || '';
     document.getElementById('user-form-nombre').value = u.nombre || '';
     document.getElementById('user-form-email').value = u.email || '';
-    document.getElementById('user-form-role').value = u.role || 'Operador';
+
+    let perms = u.permisos_contenedores || [];
+    if (typeof perms === 'string') {
+        try { perms = JSON.parse(perms); } catch(e) { perms = []; }
+    }
+    const cleanU = String(u.username || '').toLowerCase();
+    if ((cleanU === 'melani' || cleanU === 'mel' || cleanU === 'admin' || u.role === 'Administrador') && perms.length === 0) {
+        perms = ['ver_flota', 'editar_flota', 'editar_alquileres', 'editar_seguimiento', 'editar_taller', 'ver_configuracion', 'ver_supabase'];
+    }
+
+    const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = perms.includes(val); };
+    setCheck('user-perm-ver-flota', 'ver_flota');
+    setCheck('user-perm-editar-flota', 'editar_flota');
+    setCheck('user-perm-alquileres', 'editar_alquileres');
+    setCheck('user-perm-seguimiento', 'editar_seguimiento');
+    setCheck('user-perm-taller', 'editar_taller');
+    setCheck('user-perm-config', 'ver_configuracion');
+    setCheck('user-perm-supabase', 'ver_supabase');
+
     modal.style.display = 'flex';
 };
 
@@ -3163,32 +4652,57 @@ window.guardarUsuarioForm = function(e) {
     const password = document.getElementById('user-form-password').value.trim();
     const nombre = document.getElementById('user-form-nombre').value.trim();
     const email = document.getElementById('user-form-email').value.trim();
-    const role = document.getElementById('user-form-role').value;
+
+    const selectedPerms = [];
+    const checkVal = (id, val) => { const el = document.getElementById(id); if (el && el.checked) selectedPerms.push(val); };
+    checkVal('user-perm-ver-flota', 'ver_flota');
+    checkVal('user-perm-editar-flota', 'editar_flota');
+    checkVal('user-perm-alquileres', 'editar_alquileres');
+    checkVal('user-perm-seguimiento', 'editar_seguimiento');
+    checkVal('user-perm-taller', 'editar_taller');
+    checkVal('user-perm-config', 'ver_configuracion');
+    checkVal('user-perm-supabase', 'ver_supabase');
 
     if (!username) {
         showToast("El usuario es obligatorio.", "warning");
         return;
     }
 
+    let target = null;
     if (id) {
-        const u = appData.users.find(x => String(x.id) === String(id));
-        if (u) {
-            u.username = username;
-            if (password) u.password = password;
-            u.nombre = nombre;
-            u.email = email;
-            u.role = role;
+        target = appData.users.find(x => String(x.id) === String(id));
+        if (target) {
+            target.username = username;
+            if (password) target.password = password;
+            target.nombre = nombre;
+            target.email = email;
+            target.permisos_contenedores = selectedPerms;
         }
-    } else {
-        const newId = String(Date.now());
-        appData.users.push({ id: newId, username, password: password || '123', nombre, email, role });
+    }
+    
+    if (!target) {
+        const newId = 'usr_' + username;
+        target = { 
+            id: newId, 
+            username, 
+            password: password || '123', 
+            nombre, 
+            email, 
+            permisos_contenedores: selectedPerms 
+        };
+        appData.users.push(target);
     }
 
     saveUsers();
+    try {
+        window.guardarUsuarioEnSupabase(target);
+    } catch(e) {}
+
     cerrarModales();
     renderConfigUsuariosTable();
-    showToast(`✓ Usuario ${username} guardado.`, "success");
+    showToast(`✓ Permisos de ${username} guardados correctamente.`, "success");
 };
+
 
 window.eliminarUsuario = function(id) {
     const u = appData.users.find(x => String(x.id) === String(id));
@@ -3196,6 +4710,7 @@ window.eliminarUsuario = function(id) {
     if (confirm(`¿Eliminar al usuario ${u.username}?`)) {
         appData.users = appData.users.filter(x => String(x.id) !== String(id));
         saveUsers();
+        try { window.eliminarUsuarioEnSupabase(u.username); } catch(e) {}
         renderConfigUsuariosTable();
         showToast(`Usuario ${u.username} eliminado.`, "warning");
     }
@@ -3626,8 +5141,35 @@ window.verContenedorEnMapa = function(code) {
     }, 250);
 };
 
+window.onTrasladoChange = function(val) {
+    const desp = document.getElementById('form-cont-traslado-desplegable');
+    if (desp) {
+        desp.style.display = (val === 'si') ? 'block' : 'none';
+        if (val === 'si') {
+            const montoInp = document.getElementById('form-cont-traslado-monto');
+            if (montoInp) montoInp.focus();
+        }
+    }
+};
+
+window.onAlquilerTrasladoChange = function(val) {
+    const desp = document.getElementById('alquiler-form-traslado-desplegable');
+    if (desp) {
+        desp.style.display = (val === 'si') ? 'block' : 'none';
+        if (val === 'si') {
+            const montoInp = document.getElementById('alquiler-form-traslado-monto');
+            if (montoInp) montoInp.focus();
+        }
+    }
+};
+
 // Modales CRUD Contenedor
 window.abrirModalNuevoContenedor = function() {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeCrearContenedor: true };
+    if (!p.puedeCrearContenedor) {
+        showToast("No tienes permisos para dar de alta nuevos contenedores.", "warning");
+        return;
+    }
     const modal = document.getElementById('modal-contenedor-form');
     if (!modal) return;
     
@@ -3648,11 +5190,24 @@ window.abrirModalNuevoContenedor = function() {
     const obsEl = document.getElementById('form-cont-obs');
     if (obsEl) obsEl.value = '';
 
+    const trasladoEl = document.getElementById('form-cont-traslado');
+    if (trasladoEl) trasladoEl.value = 'no';
+    const montoEl = document.getElementById('form-cont-traslado-monto');
+    if (montoEl) montoEl.value = '';
+    const horasEl = document.getElementById('form-cont-traslado-horas');
+    if (horasEl) horasEl.value = '';
+    window.onTrasladoChange('no');
+
     modal.style.display = 'flex';
     window.initFormMap(-32.6642, -60.7932);
 };
 
 window.abrirModalEditarContenedor = function(code) {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarFlota: true };
+    if (!p.puedeEditarFlota) {
+        showToast("No tienes permisos para editar datos de la flota.", "warning");
+        return;
+    }
     const cont = appData.contenedores.find(x => x.code === code);
     if (!cont) return;
 
@@ -3690,6 +5245,15 @@ window.abrirModalEditarContenedor = function(code) {
     const obsEl = document.getElementById('form-cont-obs');
     if (obsEl) obsEl.value = cont.obsEntrega || cont.observaciones || '';
 
+    const isTraslado = (cont.traslado === 'si' || cont.traslado === true);
+    const trasladoEl = document.getElementById('form-cont-traslado');
+    if (trasladoEl) trasladoEl.value = isTraslado ? 'si' : 'no';
+    const montoEl = document.getElementById('form-cont-traslado-monto');
+    if (montoEl) montoEl.value = cont.trasladoMonto || '';
+    const horasEl = document.getElementById('form-cont-traslado-horas');
+    if (horasEl) horasEl.value = cont.trasladoHoras || '';
+    window.onTrasladoChange(isTraslado ? 'si' : 'no');
+
     modal.style.display = 'flex';
     const initLat = (cont.lat && !isNaN(cont.lat)) ? cont.lat : -32.6642;
     const initLng = (cont.lng && !isNaN(cont.lng)) ? cont.lng : -60.7932;
@@ -3698,6 +5262,11 @@ window.abrirModalEditarContenedor = function(code) {
 
 window.guardarContenedorForm = function(e) {
     if (e) e.preventDefault();
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarFlota: true };
+    if (!p.puedeEditarFlota && !p.puedeCrearContenedor) {
+        showToast("No tienes permisos para modificar la flota.", "warning");
+        return;
+    }
     const code = document.getElementById('form-cont-code').value.trim();
     if (!code) {
         showToast("El código del contenedor es obligatorio.", "error");
@@ -3731,6 +5300,13 @@ window.guardarContenedorForm = function(e) {
     cont.obsEntrega = obsEl ? obsEl.value.trim() : '';
     cont.observaciones = cont.obsEntrega;
 
+    const trasladoEl = document.getElementById('form-cont-traslado');
+    cont.traslado = trasladoEl ? trasladoEl.value : 'no';
+    const montoEl = document.getElementById('form-cont-traslado-monto');
+    cont.trasladoMonto = montoEl ? montoEl.value.trim() : '';
+    const horasEl = document.getElementById('form-cont-traslado-horas');
+    cont.trasladoHoras = horasEl ? horasEl.value.trim() : '';
+
     // Obtener coordenadas desde el selector en mini mapa
     const latInp = document.getElementById('form-cont-lat');
     const lngInp = document.getElementById('form-cont-lng');
@@ -3762,6 +5338,7 @@ window.guardarContenedorForm = function(e) {
     if (appData.dashMarkersGroup) populateMarkers(appData.dashMarkersGroup, true);
 
     showToast(`✓ Contenedor ${code} guardado con éxito. Ubicado en el mapa.`, "success");
+    try { window.guardarContenedorEnSupabase(cont); } catch(e) {}
 
     try {
         logOperationalEvent(isNew ? 'alta' : 'modificacion', `${isNew ? 'Alta de nuevo' : 'Actualización de'} contenedor ${code} (${cont.tipo} ${cont.medida}, prov: ${cont.proveedor}) en "${cont.ubicacion}"`, code);
@@ -3790,6 +5367,14 @@ window.abrirModalFicha = function(code) {
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; font-size: 12px;">
+            <div class="glass-card">
+                <span style="color: #94a3b8; font-size: 11px;">Empresa Propietaria / Proveedor</span><br>
+                <div style="margin-top: 4px;">${renderBadgeProveedor(c)}</div>
+            </div>
+            <div class="glass-card">
+                <span style="color: #94a3b8; font-size: 11px;">Traslado Adicional</span><br>
+                <div style="margin-top: 4px;">${renderBadgeTraslado(c)}</div>
+            </div>
             <div class="glass-card">
                 <span style="color: #94a3b8; font-size: 11px;">Cliente Asignado</span><br>
                 <strong style="font-size: 13px; color: #ffffff;">${c.cliente || ((c.proveedor || '').toUpperCase().includes('SG') ? 'SG Montajes (Disponible en Base)' : 'Acosta Servicios (Disponible en Base)')}</strong>
@@ -3854,6 +5439,11 @@ window.abrirModalFicha = function(code) {
 };
 
 window.abrirModalProrroga = function(code) {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarAlquileres: true };
+    if (!p.puedeEditarAlquileres) {
+        showToast("No tienes permisos para prorrogar alquileres.", "warning");
+        return;
+    }
     const c = appData.contenedores.find(x => x.code === code);
     if (!c) return;
 
@@ -3868,6 +5458,11 @@ window.abrirModalProrroga = function(code) {
 };
 
 window.guardarProrroga = function() {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarAlquileres: true };
+    if (!p.puedeEditarAlquileres) {
+        showToast("No tienes permisos para prorrogar alquileres.", "warning");
+        return;
+    }
     const code = document.getElementById('prorroga-code').value;
     const nuevaFecha = document.getElementById('prorroga-nueva').value;
     if (!nuevaFecha) {
@@ -3892,10 +5487,15 @@ window.guardarProrroga = function() {
 };
 
 window.abrirModalDevolucion = function(code) {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarAlquileres: true };
+    if (!p.puedeEditarAlquileres) {
+        showToast("No tienes permisos para registrar devoluciones a base.", "warning");
+        return;
+    }
     const c = appData.contenedores.find(x => x.code === code);
     if (!c) return;
 
-    if (confirm(`¿Confirma el retiro y recepción del contenedor ${c.code} de la obra ${c.ubicacion || ''} hacia el Base Operativa Timbúes?`)) {
+    if (confirm(`¿Confirma el retiro y recepción del contenedor ${c.code} de la obra ${c.ubicacion || ''} hacia la Base Operativa Timbúes?`)) {
         const obraAnterior = c.ubicacion || '';
         const clienteAnterior = c.cliente || '';
         c.estado = 'empresa';
@@ -3906,6 +5506,41 @@ window.abrirModalDevolucion = function(code) {
         c.lng = baseCoords.lng;
         c.retiro = '';
         saveData();
+
+        // Actualizar registro en Seguimiento y Trazabilidad
+        if (Array.isArray(appData.seguimientoMovimientos)) {
+            const movActivo = appData.seguimientoMovimientos.find(m => m.code === c.code && m.estadoMovimiento === 'en_obra');
+            const hoy = new Date().toISOString().split('T')[0];
+            const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            if (movActivo) {
+                movActivo.fechaEntrada = hoy;
+                movActivo.horaEntrada = hora;
+                movActivo.estadoMovimiento = 'en_base';
+            } else {
+                appData.seguimientoMovimientos.unshift({
+                    id: 'seg_dev_' + Date.now() + '_' + c.code,
+                    code: c.code,
+                    tipo: c.tipo,
+                    medida: c.medida,
+                    proveedor: c.proveedor || 'ACOSTA SERVICIOS SRL',
+                    cliente: clienteAnterior || 'Devolución de obra',
+                    fechaSalida: c.entrega || hoy,
+                    horaSalida: '09:00',
+                    destino: obraAnterior || 'Obra finalizada',
+                    fechaEntrada: hoy,
+                    horaEntrada: hora,
+                    estadoMovimiento: 'en_base',
+                    traslado: c.traslado || 'no',
+                    trasladoMonto: c.trasladoMonto || '',
+                    trasladoHoras: c.trasladoHoras || '',
+                    observaciones: `Devolución y recepción en base de ${c.code}`,
+                    remitoNumero: 'REM-' + Math.floor(100 + Math.random() * 900)
+                });
+            }
+            guardarSeguimientoData();
+            try { renderSeguimientoTable(); } catch(e) {}
+        }
+
         renderHeaderStats();
         renderDashboard();
         renderFlotaTable();
@@ -3924,6 +5559,11 @@ window.abrirModalDevolucion = function(code) {
 };
 
 window.abrirModalMantenimiento = function(code) {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarTaller: true };
+    if (!p.puedeEditarTaller) {
+        showToast("No tienes permisos para gestionar tareas de taller.", "warning");
+        return;
+    }
     const c = appData.contenedores.find(x => x.code === code);
     if (!c) return;
 
@@ -3953,6 +5593,11 @@ window.abrirModalMantenimiento = function(code) {
 };
 
 window.agregarTareaMantenimiento = function() {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarTaller: true };
+    if (!p.puedeEditarTaller) {
+        showToast("No tienes permisos para agregar tareas de mantenimiento.", "warning");
+        return;
+    }
     const code = document.getElementById('mant-code').value;
     const tarea = document.getElementById('mant-nueva-tarea').value.trim();
     if (!tarea) return;
@@ -3977,9 +5622,15 @@ window.agregarTareaMantenimiento = function() {
 };
 
 window.eliminarContenedor = function(code) {
+    const p = window.obtenerPermisosUsuario ? window.obtenerPermisosUsuario() : { puedeEditarFlota: true };
+    if (!p.puedeEditarFlota) {
+        showToast("No tienes permisos para eliminar unidades de la flota.", "warning");
+        return;
+    }
     if (confirm(`¿Está seguro de eliminar el contenedor ${code} de la flota?`)) {
         appData.contenedores = appData.contenedores.filter(x => x.code !== code);
         saveData();
+        try { window.eliminarContenedorEnSupabase(code); } catch(e) {}
         renderHeaderStats();
         renderDashboard();
         renderFlotaTable();
@@ -4087,6 +5738,15 @@ window.abrirModalAlquiler = function(preselectedCode) {
         if (montoEl) montoEl.value = c.monto || '$ 250.000';
         if (pagoEl) pagoEl.value = c.pago || 'al_dia';
         if (obsEl) obsEl.value = c.observaciones || '';
+        const isTraslado = (c.traslado === 'si' || c.traslado === true);
+        const trasladoEl = document.getElementById('alquiler-form-traslado');
+        if (trasladoEl) trasladoEl.value = isTraslado ? 'si' : 'no';
+        const montoTrasladoEl = document.getElementById('alquiler-form-traslado-monto');
+        if (montoTrasladoEl) montoTrasladoEl.value = c.trasladoMonto || '';
+        const horasTrasladoEl = document.getElementById('alquiler-form-traslado-horas');
+        if (horasTrasladoEl) horasTrasladoEl.value = c.trasladoHoras || '';
+        window.onAlquilerTrasladoChange(isTraslado ? 'si' : 'no');
+
         const provEl = document.getElementById('alquiler-form-proveedor');
         if (provEl) {
             provEl.value = c.proveedor || 'ACOSTA SERVICIOS SRL';
@@ -4095,6 +5755,14 @@ window.abrirModalAlquiler = function(preselectedCode) {
     } else {
         if (entregaEl) entregaEl.value = hoyStr;
         if (retiroEl) retiroEl.value = unMesStr;
+        const trasladoEl = document.getElementById('alquiler-form-traslado');
+        if (trasladoEl) trasladoEl.value = 'no';
+        const montoTrasladoEl = document.getElementById('alquiler-form-traslado-monto');
+        if (montoTrasladoEl) montoTrasladoEl.value = '';
+        const horasTrasladoEl = document.getElementById('alquiler-form-traslado-horas');
+        if (horasTrasladoEl) horasTrasladoEl.value = '';
+        window.onAlquilerTrasladoChange('no');
+
         const provEl = document.getElementById('alquiler-form-proveedor');
         if (provEl) {
             provEl.value = 'ACOSTA SERVICIOS SRL';
@@ -4249,6 +5917,15 @@ window.onAlquilerSelectContainer = function(code) {
             provEl.value = c.proveedor || 'ACOSTA SERVICIOS SRL';
             window.onProveedorAlquilerChange(provEl.value);
         }
+        const isTraslado = (c.traslado === 'si' || c.traslado === true);
+        const trasladoEl = document.getElementById('alquiler-form-traslado');
+        if (trasladoEl) trasladoEl.value = isTraslado ? 'si' : 'no';
+        const montoTrasladoEl = document.getElementById('alquiler-form-traslado-monto');
+        if (montoTrasladoEl) montoTrasladoEl.value = c.trasladoMonto || '';
+        const horasTrasladoEl = document.getElementById('alquiler-form-traslado-horas');
+        if (horasTrasladoEl) horasTrasladoEl.value = c.trasladoHoras || '';
+        window.onAlquilerTrasladoChange(isTraslado ? 'si' : 'no');
+
         const curLat = (c.lat && !isNaN(c.lat)) ? c.lat : -32.6642;
         const curLng = (c.lng && !isNaN(c.lng)) ? c.lng : -60.7932;
         window.initAlquilerMap(curLat, curLng, c.proveedor || (provEl ? provEl.value : 'ACOSTA SERVICIOS SRL'));
@@ -4290,6 +5967,13 @@ window.guardarAlquilerForm = function(e, emitirRemito) {
     const provEl = document.getElementById('alquiler-form-proveedor');
     c.proveedor = provEl ? provEl.value : 'ACOSTA SERVICIOS SRL';
 
+    const trasladoEl = document.getElementById('alquiler-form-traslado');
+    c.traslado = trasladoEl ? trasladoEl.value : 'no';
+    const montoTrasladoEl = document.getElementById('alquiler-form-traslado-monto');
+    c.trasladoMonto = montoTrasladoEl ? montoTrasladoEl.value.trim() : '';
+    const horasTrasladoEl = document.getElementById('alquiler-form-traslado-horas');
+    c.trasladoHoras = horasTrasladoEl ? horasTrasladoEl.value.trim() : '';
+
     // Obtener coordenadas desde el mini mapa interactivo o resolvedor
     const latInp = document.getElementById('alquiler-form-lat');
     const lngInp = document.getElementById('alquiler-form-lng');
@@ -4306,12 +5990,39 @@ window.guardarAlquilerForm = function(e, emitirRemito) {
     c.lng = lng;
 
     saveData();
+
+    // Registrar salida en Seguimiento y Trazabilidad
+    if (!Array.isArray(appData.seguimientoMovimientos)) appData.seguimientoMovimientos = [];
+    const ahora = new Date();
+    appData.seguimientoMovimientos.unshift({
+        id: 'seg_alq_' + Date.now() + '_' + c.code,
+        code: c.code,
+        tipo: c.tipo,
+        medida: c.medida,
+        proveedor: c.proveedor,
+        cliente: c.cliente,
+        fechaSalida: c.entrega || ahora.toISOString().split('T')[0],
+        horaSalida: ahora.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        destino: c.ubicacion || 'Obra',
+        fechaEntrada: '',
+        horaEntrada: '',
+        retiroEstimado: c.retiro || '',
+        estadoMovimiento: 'en_obra',
+        traslado: c.traslado,
+        trasladoMonto: c.trasladoMonto,
+        trasladoHoras: c.trasladoHoras,
+        observaciones: c.observaciones || `Alquiler asignado a ${c.cliente}`,
+        remitoNumero: 'REM-' + Math.floor(100 + Math.random() * 900)
+    });
+    guardarSeguimientoData();
+
     cerrarModales();
 
     try { renderHeaderStats(); } catch(err) {}
     try { renderDashboard(); } catch(err) {}
     try { renderFlotaTable(); } catch(err) {}
     try { renderAlquileresTable(); } catch(err) {}
+    try { renderSeguimientoTable(); } catch(err) {}
 
     // Actualizar pines del mapa en vivo inmediatamente
     if (appData.markersGroup) populateMarkers(appData.markersGroup, false);
@@ -4403,7 +6114,7 @@ document.addEventListener('keydown', function(event) {
 // Geocodificador de Ubicación a Coordenadas (Timbúes, Cordón Industrial, Santa Fe, Argentina)
 window.obtenerCoordenadasPorUbicacion = function(texto) {
     const t = (texto || '').toLowerCase().trim();
-    if (!t || t.includes('timbues') || t.includes('timbúes') || t.includes('base') || t.includes('deposito') || t.includes('depósito') || t.includes('sarandí') || t.includes('sarandi')) {
+    if (!t || t.includes('timbues') || t.includes('timbúes') || t.includes('base') || t.includes('deposito') || t.includes('depósito')) {
         // Base Operativa Timbúes (con dispersión sutil para visualización clara de cada pin)
         return { lat: -32.6642 + (Math.random() - 0.5) * 0.003, lng: -60.7932 + (Math.random() - 0.5) * 0.003 };
     }

@@ -59,7 +59,15 @@
                 <span id="header-stats-summary">Cargando flota...</span>
             </div>
 
+            <!-- Badge de Sincronización Supabase Cloud -->
+            <div id="supabase-sync-badge" onclick="sincronizarManualmenteConSupabase()" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.4); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; color: #10b981; transition: all 0.2s;" title="Base de Datos Supabase. Haz clic para sincronizar ahora.">
+                <i class="fas fa-cloud" id="supabase-sync-icon"></i>
+                <span id="supabase-sync-text">Supabase Conectado</span>
+            </div>
+
             <div style="display: flex; align-items: center; gap: 8px; position: relative;">
+
+
                 <!-- Botón Usuarios en Línea -->
                 <div style="position: relative;">
                     <button id="btn-header-online-users" class="btn btn-secondary btn-sm" onclick="toggleOnlineUsersFlyout(event)" style="display: inline-flex; align-items: center; gap: 6px; border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.12); color: #ffffff;" title="Ver operadores conectados en tiempo real">
@@ -92,15 +100,16 @@
 
                 <div style="border-left: 1px solid var(--glass-border); height: 20px; margin: 0 2px;"></div>
 
-                <button class="btn btn-warning btn-sm" onclick="abrirModalNuevoContenedor()">
+                <button id="btn-header-alta-contenedor" class="btn btn-warning btn-sm" onclick="abrirModalNuevoContenedor()">
                     <i class="fas fa-plus-circle"></i> + Alta
                 </button>
                 <button class="btn btn-secondary btn-sm" onclick="exportarContenedoresExcel()" title="Exportar a Excel">
                     <i class="fas fa-file-excel"></i> Excel
                 </button>
                 <div style="border-left: 1px solid var(--glass-border); height: 20px; margin: 0 2px;"></div>
-                <span style="font-size: 12px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 5px;">
+                <span style="font-size: 12px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 6px;">
                     <i class="fas fa-user-circle"></i> <span id="current-user-display">Usuario</span>
+                    <span id="current-user-role-badge" class="badge-estado badge-empresa" style="font-size: 9.5px; padding: 2px 7px; text-transform: uppercase; letter-spacing: 0.5px;">Administrador</span>
                 </span>
                 <button class="btn btn-secondary btn-sm" onclick="ejecutarLogout()" title="Cerrar sesión">
                     <i class="fas fa-sign-out-alt"></i> Salir
@@ -124,6 +133,9 @@
             </button>
             <button id="nav-btn-alquileres" class="nav-tab-btn" onclick="switchView('alquileres')">
                 <i class="fas fa-handshake"></i> Alquileres & Contratos
+            </button>
+            <button id="nav-btn-seguimiento" class="nav-tab-btn" onclick="switchView('seguimiento')">
+                <i class="fas fa-route"></i> Seguimiento & Trazabilidad
             </button>
             <button id="nav-btn-mantenimiento" class="nav-tab-btn" onclick="switchView('mantenimiento')">
                 <i class="fas fa-tools"></i> Mantenimiento & Taller
@@ -257,6 +269,18 @@
                             </div>
                         </div>
 
+                        <!-- Solapa Seguimiento: Salidas, Entradas y Clientes -->
+                        <div class="dash-solapa-card" onclick="switchView('seguimiento')">
+                            <div class="dash-solapa-icon" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
+                                <i class="fas fa-route"></i>
+                            </div>
+                            <div class="dash-solapa-info">
+                                <h5>Seguimiento & Trazabilidad</h5>
+                                <p>Historial completo de salidas a cliente, entradas a base, fechas, traslados y proveedores de cada unidad.</p>
+                                <span class="dash-solapa-link">Ver Trazabilidad de Salidas y Entradas →</span>
+                            </div>
+                        </div>
+
                         <!-- Solapa 3: Mantenimiento y Taller -->
                         <div class="dash-solapa-card" onclick="switchView('mantenimiento')">
                             <div class="dash-solapa-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
@@ -387,8 +411,10 @@
                                 <th>CÓDIGO</th>
                                 <th>TIPO</th>
                                 <th>MEDIDA</th>
+                                <th>PROVEEDOR</th>
                                 <th>ESTADO</th>
                                 <th>PAGO</th>
+                                <th>TRASLADO</th>
                                 <th>CLIENTE / UBICACIÓN</th>
                                 <th>MANTENIMIENTO</th>
                                 <th>ACCIONES</th>
@@ -420,8 +446,10 @@
                             <tr>
                                 <th>CÓDIGO</th>
                                 <th>TIPO</th>
+                                <th>PROVEEDOR</th>
                                 <th>CLIENTE</th>
                                 <th>OBRA / UBICACIÓN</th>
+                                <th>TRASLADO</th>
                                 <th>ENTREGA</th>
                                 <th>RETIRO PROG.</th>
                                 <th>VENCIMIENTO</th>
@@ -429,6 +457,126 @@
                             </tr>
                         </thead>
                         <tbody id="alquileres-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ================= VISTA SEGUIMIENTO & TRAZABILIDAD ================= -->
+            <section id="view-seguimiento" class="view-section" style="display: none;">
+                <!-- Header de la Vista -->
+                <div style="margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button class="btn btn-secondary btn-sm" onclick="switchView('dashboard')" style="font-weight: bold; color: #38bdf8; border-color: rgba(56,189,248,0.4);">
+                            <i class="fas fa-arrow-left"></i> Volver al Tablero
+                        </button>
+                        <div>
+                            <h4 style="margin: 0; font-size: 16px; color: var(--warning); display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-route"></i> Seguimiento & Trazabilidad de Contenedores
+                            </h4>
+                            <span style="font-size: 11.5px; color: #94a3b8;">Control de salidas a cliente, entradas a base, fechas, traslados y proveedor</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button id="btn-nuevo-movimiento-seg" class="btn btn-warning btn-sm" onclick="abrirModalRegistroMovimiento()">
+                            <i class="fas fa-plus-circle"></i> + Registrar Movimiento (Salida / Entrada)
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="exportarSeguimientoExcel()" title="Descargar registro de trazabilidad en Excel">
+                            <i class="fas fa-file-excel" style="color: #10b981;"></i> Exportar Excel
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="renderSeguimientoTable()" title="Actualizar datos">
+                            <i class="fas fa-sync-alt"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tarjetas Métricas KPI de Seguimiento -->
+                <div class="seguimiento-kpi-grid">
+                    <div class="seguimiento-kpi-card">
+                        <div class="seguimiento-kpi-icon" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                        <div class="seguimiento-kpi-info">
+                            <span class="seguimiento-kpi-val" id="kpi-seg-total">0</span>
+                            <span class="seguimiento-kpi-label">Total Movimientos</span>
+                        </div>
+                    </div>
+                    <div class="seguimiento-kpi-card">
+                        <div class="seguimiento-kpi-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                            <i class="fas fa-truck-moving"></i>
+                        </div>
+                        <div class="seguimiento-kpi-info">
+                            <span class="seguimiento-kpi-val" id="kpi-seg-salidas">0</span>
+                            <span class="seguimiento-kpi-label">Salidas Activas (En Obra)</span>
+                        </div>
+                    </div>
+                    <div class="seguimiento-kpi-card">
+                        <div class="seguimiento-kpi-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                            <i class="fas fa-warehouse"></i>
+                        </div>
+                        <div class="seguimiento-kpi-info">
+                            <span class="seguimiento-kpi-val" id="kpi-seg-entradas">0</span>
+                            <span class="seguimiento-kpi-label">Entradas a Base Timbúes</span>
+                        </div>
+                    </div>
+                    <div class="seguimiento-kpi-card">
+                        <div class="seguimiento-kpi-icon" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">
+                            <i class="fas fa-dolly"></i>
+                        </div>
+                        <div class="seguimiento-kpi-info">
+                            <span class="seguimiento-kpi-val" id="kpi-seg-traslados">0</span>
+                            <span class="seguimiento-kpi-label">Con Traslado Adicional</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Barra de Búsqueda y Chips de Filtrado -->
+                <div class="glass-card" style="padding: 10px 14px; margin-bottom: 12px;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: space-between;">
+                        <div style="flex: 1; min-width: 250px; position: relative;">
+                            <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 13px;"></i>
+                            <input type="text" id="seguimiento-search-input" class="form-control" placeholder="Buscar por código (ej: OF-01), cliente, obra o proveedor..." oninput="buscarEnSeguimiento(this.value)" style="padding-left: 34px; height: 36px; font-size: 12.5px; border-radius: 6px;">
+                        </div>
+                        <div class="seguimiento-filters-bar" style="margin-bottom: 0;">
+                            <button class="chip-filtro-seguimiento active" data-filter="todos" onclick="filtrarSeguimiento('todos')">
+                                <i class="fas fa-list"></i> Todos
+                            </button>
+                            <button class="chip-filtro-seguimiento" data-filter="salidas" onclick="filtrarSeguimiento('salidas')">
+                                <i class="fas fa-truck-moving"></i> Salidas Activas
+                            </button>
+                            <button class="chip-filtro-seguimiento" data-filter="entradas" onclick="filtrarSeguimiento('entradas')">
+                                <i class="fas fa-warehouse"></i> En Base (Entradas)
+                            </button>
+                            <button class="chip-filtro-seguimiento" data-filter="acosta" onclick="filtrarSeguimiento('acosta')">
+                                <i class="fas fa-cube" style="color: #38bdf8;"></i> Acosta Servicios
+                            </button>
+                            <button class="chip-filtro-seguimiento" data-filter="sg" onclick="filtrarSeguimiento('sg')">
+                                <i class="fas fa-cog" style="color: #fbbf24;"></i> SG Montajes
+                            </button>
+                            <button class="chip-filtro-seguimiento" data-filter="traslado" onclick="filtrarSeguimiento('traslado')">
+                                <i class="fas fa-dolly" style="color: #c084fc;"></i> Con Traslado
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de Trazabilidad y Seguimiento -->
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>CONTENEDOR</th>
+                                <th>PROVEEDOR</th>
+                                <th>CLIENTE</th>
+                                <th>SALIDA (FECHA & DESTINO)</th>
+                                <th>ENTRADA (FECHA & RECEPCIÓN)</th>
+                                <th>ESTADO</th>
+                                <th>TRASLADO</th>
+                                <th>ACCIONES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="seguimiento-table-body">
+                            <!-- Inyectado dinámicamente por app.js -->
+                        </tbody>
                     </table>
                 </div>
             </section>
@@ -612,19 +760,55 @@
                     </div>
                 </div>
 
-                <!-- Subpane 3: Backups -->
+                <!-- Subpane 3: Supabase Cloud & Backups -->
                 <div id="config-pane-backups" class="config-subtab-pane" style="display: none;">
-                    <div class="glass-card" style="max-width: 600px;">
-                        <h4 style="margin: 0 0 10px 0; font-size: 14px; color: var(--warning);">Copias de Seguridad y Datos</h4>
-                        <p style="font-size: 12px; color: #94a3b8; margin-bottom: 14px;">Descargue un archivo de respaldo con toda la flota, contratos, usuarios y configuraciones para resguardo externo.</p>
-                        
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <button class="btn btn-primary" onclick="exportarBackupJSON()">
-                                <i class="fas fa-download"></i> Descargar Backup Completo (JSON)
-                            </button>
-                            <button class="btn btn-danger" onclick="restaurarDatosOriginales()">
-                                <i class="fas fa-undo"></i> Restaurar los 50 Contenedores Originales
-                            </button>
+                    <div style="display: flex; flex-direction: column; gap: 14px; max-width: 650px;">
+                        <!-- Tarjeta Supabase Cloud -->
+                        <div class="glass-card" style="border: 1px solid rgba(16, 185, 129, 0.4); background: rgba(15, 23, 42, 0.85);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h4 style="margin: 0; font-size: 15px; color: #10b981; display: flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-cloud"></i> Base de Datos Supabase (PostgreSQL Cloud)
+                                </h4>
+                                <span id="supabase-panel-status-pill" class="badge-estado badge-alquilado" style="font-size: 11px;">
+                                    🟢 Conectado
+                                </span>
+                            </div>
+                            <p style="font-size: 12px; color: #cbd5e1; margin-bottom: 12px; line-height: 1.5;">
+                                Todos los contenedores, contratos, salidas, entradas, clientes y proveedores se registran y sincronizan directamente con la base de datos central de <strong>Supabase</strong> en tiempo real.
+                            </p>
+                            <div style="background: rgba(0, 0, 0, 0.35); border-radius: 6px; padding: 10px; margin-bottom: 14px; font-family: monospace; font-size: 11px; color: #94a3b8;">
+                                <div><strong style="color: #38bdf8;">URL:</strong> https://amkkuwgatjcbiyrykuoy.supabase.co</div>
+                                <div style="margin-top: 4px;"><strong style="color: #38bdf8;">Tablas:</strong> contenedores, seguimiento_contenedores, usuarios, configuracion, eventos</div>
+                                <div style="margin-top: 4px;"><strong style="color: #38bdf8;">Última Sync:</strong> <span id="supabase-last-sync-time" style="color: #ffffff;">Al cargar la página</span></div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <button class="btn btn-primary" onclick="sincronizarManualmenteConSupabase()" style="font-weight: bold;">
+                                    <i class="fas fa-sync-alt"></i> Sincronizar Ahora (Nube ⇄ Local)
+                                </button>
+                                <button class="btn btn-warning" onclick="subirFlotaCompletaASupabase(true)" style="font-weight: bold;">
+                                    <i class="fas fa-cloud-upload-alt"></i> Subir Todo a Supabase
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tarjeta Backups Locales y Resguardo -->
+                        <div class="glass-card">
+                            <h4 style="margin: 0 0 10px 0; font-size: 14px; color: var(--warning);">
+                                <i class="fas fa-file-archive"></i> Copias de Seguridad Locales
+                            </h4>
+                            <p style="font-size: 12px; color: #94a3b8; margin-bottom: 14px;">Descargue un archivo de respaldo con toda la flota, contratos, usuarios y configuraciones para resguardo offline.</p>
+                            
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn btn-secondary" onclick="exportarBackupJSON()">
+                                    <i class="fas fa-download"></i> Descargar Backup JSON
+                                </button>
+                                <button class="btn btn-secondary" onclick="descargarScriptSQLSupabase()" title="Descargar script SQL para Supabase">
+                                    <i class="fas fa-file-code" style="color: #38bdf8;"></i> Descargar SQL Supabase
+                                </button>
+                                <button class="btn btn-danger" onclick="restaurarDatosOriginales()">
+                                    <i class="fas fa-undo"></i> Restaurar 50 Originales
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -841,6 +1025,31 @@
                     </div>
                 </div>
 
+                <!-- Traslado Adicional Selector Desplegable -->
+                <div class="form-group" style="margin-bottom: 12px; background: rgba(15, 23, 42, 0.4); padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.2);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label style="margin-bottom: 0; font-weight: 600; color: #e2e8f0; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-truck-moving" style="color: #38bdf8;"></i> ¿Traslado adicional?
+                        </label>
+                        <select id="alquiler-form-traslado" onchange="onAlquilerTrasladoChange(this.value)" style="width: 110px; font-weight: 700; background: rgba(30, 41, 59, 0.9); border: 1px solid rgba(56, 189, 248, 0.4); color: #ffffff; border-radius: 6px; padding: 5px 8px;">
+                            <option value="no" selected>No</option>
+                            <option value="si">Sí</option>
+                        </select>
+                    </div>
+                    <div id="alquiler-form-traslado-desplegable" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(56, 189, 248, 0.25);">
+                        <div class="form-row" style="margin-bottom: 0;">
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label style="font-size: 11.5px; color: #94a3b8;">¿Cuánto sale? (Monto Traslado)</label>
+                                <input type="text" id="alquiler-form-traslado-monto" placeholder="Ej: $ 50.000">
+                            </div>
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label style="font-size: 11.5px; color: #94a3b8;">Horas de carga / traslado</label>
+                                <input type="text" id="alquiler-form-traslado-horas" placeholder="Ej: 4 hs">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label>Observaciones de Entrega / Equipamiento</label>
                     <textarea id="alquiler-form-obs" rows="2" placeholder="Ej: Entregado con 2 llaves, aire acondicionado split probado, tablero térmico OK."></textarea>
@@ -930,6 +1139,31 @@
                     <div id="form-cont-map" style="height: 160px; width: 100%; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); overflow: hidden; background: #0f172a;"></div>
                     <input type="hidden" id="form-cont-lat" value="-32.6642">
                     <input type="hidden" id="form-cont-lng" value="-60.7932">
+                </div>
+
+                <!-- Traslado Adicional Selector Desplegable -->
+                <div class="form-group" style="margin-bottom: 12px; background: rgba(15, 23, 42, 0.4); padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.2);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label style="margin-bottom: 0; font-weight: 600; color: #e2e8f0; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-truck-moving" style="color: #38bdf8;"></i> ¿Traslado adicional?
+                        </label>
+                        <select id="form-cont-traslado" onchange="onTrasladoChange(this.value)" style="width: 110px; font-weight: 700; background: rgba(30, 41, 59, 0.9); border: 1px solid rgba(56, 189, 248, 0.4); color: #ffffff; border-radius: 6px; padding: 5px 8px;">
+                            <option value="no" selected>No</option>
+                            <option value="si">Sí</option>
+                        </select>
+                    </div>
+                    <div id="form-cont-traslado-desplegable" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(56, 189, 248, 0.25);">
+                        <div class="form-row" style="margin-bottom: 0;">
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label style="font-size: 11.5px; color: #94a3b8;">¿Cuánto sale? (Monto de Traslado)</label>
+                                <input type="text" id="form-cont-traslado-monto" placeholder="Ej: $ 50.000">
+                            </div>
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label style="font-size: 11.5px; color: #94a3b8;">Horas de carga / traslado</label>
+                                <input type="text" id="form-cont-traslado-horas" placeholder="Ej: 4 hs">
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -1032,12 +1266,33 @@
                     <input type="email" id="user-form-email" placeholder="usuario@sgmontajes.com.ar">
                 </div>
                 <div class="form-group">
-                    <label>Rol de Usuario</label>
-                    <select id="user-form-role">
-                        <option value="Administrador">Administrador (Total)</option>
-                        <option value="Operador Logística">Operador Logística</option>
-                        <option value="Consulta">Solo Lectura / Consulta</option>
-                    </select>
+                    <label style="color: #38bdf8; font-weight: 700; margin-bottom: 6px; display: block;">Permisos Asignados en Contenedores & Flota</label>
+                    <div style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">
+                        Seleccione exactamente qué acciones puede ver y realizar este usuario:
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(15,23,42,0.7); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);">
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #f8fafc; cursor: pointer;">
+                            <input type="checkbox" id="user-perm-ver-flota" value="ver_flota"> 📊 Ver Flota y Tablero
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #f8fafc; cursor: pointer;">
+                            <input type="checkbox" id="user-perm-editar-flota" value="editar_flota"> ➕ Alta y Editar Unidades
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #f8fafc; cursor: pointer;">
+                            <input type="checkbox" id="user-perm-alquileres" value="editar_alquileres"> 💼 Gestionar Alquileres
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #f8fafc; cursor: pointer;">
+                            <input type="checkbox" id="user-perm-seguimiento" value="editar_seguimiento"> 🚚 Seguimiento (Salidas/Entradas)
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #f8fafc; cursor: pointer;">
+                            <input type="checkbox" id="user-perm-taller" value="editar_taller"> 🛠️ Taller y Reparaciones
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #f8fafc; cursor: pointer;">
+                            <input type="checkbox" id="user-perm-config" value="ver_configuracion"> ⚙️ Configuración / Parámetros
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #f8fafc; cursor: pointer; grid-column: span 2;">
+                            <input type="checkbox" id="user-perm-supabase" value="ver_supabase"> ☁️ Botón Supabase Cloud (Solo Administrador)
+                        </label>
+                    </div>
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px;">
                     <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
@@ -1121,6 +1376,129 @@
         </div>
     </div>
 
+    <!-- Modal Confirmación de Tarea Mantenimiento / Taller -->
+    <div id="modal-confirmar-tarea" class="modal-overlay" style="display: none; z-index: 100010;">
+        <div class="modal-content" style="max-width: 440px; text-align: center; padding: 24px 20px; border: 1.5px solid rgba(56, 189, 248, 0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+            <div style="width: 52px; height: 52px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); border: 2px solid #10b981; color: #10b981; font-size: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                <i class="fas fa-question"></i>
+            </div>
+            <h4 style="margin: 0 0 10px; font-size: 17px; color: #ffffff; font-weight: 800;">¿Confirmar Acción?</h4>
+            <div id="modal-confirmar-tarea-texto" style="font-size: 13.5px; color: #cbd5e1; margin: 0 0 14px; line-height: 1.5;">
+                ¿Está seguro que desea dar por finalizada esta tarea?
+            </div>
+            <div id="modal-confirmar-tarea-alerta" style="display: none; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; padding: 8px 12px; margin-bottom: 16px; font-size: 12px; color: #fbbf24; text-align: left;">
+                <i class="fas fa-info-circle"></i> Esta es la última tarea pendiente. La unidad pasará automáticamente a <strong>Disponible en Base</strong>.
+            </div>
+            <div style="display: flex; justify-content: center; gap: 12px;">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModalConfirmarTarea()" style="min-width: 110px; padding: 8px 16px;">
+                    Cancelar
+                </button>
+                <button type="button" id="btn-modal-confirmar-accion" class="btn btn-success" style="min-width: 140px; padding: 8px 16px; font-weight: bold; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);">
+                    <i class="fas fa-check"></i> Sí, Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Registrar Movimiento de Salida / Entrada -->
+    <div id="modal-registro-movimiento" class="modal-overlay" style="display: none; z-index: 100005;">
+        <div class="modal-content" style="max-width: 580px;">
+            <div class="modal-header">
+                <h4 id="modal-movimiento-title">
+                    <i class="fas fa-exchange-alt" style="color: var(--warning);"></i> Registrar Movimiento (Salida / Entrada)
+                </h4>
+                <button class="modal-close" onclick="cerrarModales()">✕</button>
+            </div>
+            <form onsubmit="guardarNuevoMovimientoForm(event)">
+                <input type="hidden" id="mov-form-id">
+
+                <!-- Tipo de Movimiento -->
+                <div class="form-group">
+                    <label style="font-weight: 700; color: #38bdf8;"><i class="fas fa-arrows-split-up-and-left"></i> Tipo de Movimiento</label>
+                    <select id="mov-form-tipo" onchange="alCambiarTipoMovimiento(this.value)" style="font-weight: bold;">
+                        <option value="salida">🚚 Salida de Contenedor (A Obra / Cliente)</option>
+                        <option value="entrada">📥 Entrada de Contenedor (Reingreso a Base Timbúes)</option>
+                    </select>
+                </div>
+
+                <!-- Selección de Contenedor y Proveedor -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label><i class="fas fa-box"></i> Contenedor *</label>
+                        <select id="mov-form-code" onchange="alCambiarContenedorEnMovimiento(this.value)" required>
+                            <!-- Inyectado dinámicamente -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-building"></i> Proveedor *</label>
+                        <select id="mov-form-proveedor" required>
+                            <option value="ACOSTA SERVICIOS SRL">🔵 Acosta Servicios SRL</option>
+                            <option value="SG Montajes">⚙️ SG Montajes</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Cliente y Obra / Destino -->
+                <div class="form-group">
+                    <label><i class="fas fa-user-tie"></i> Cliente / Empresa Contratista</label>
+                    <input type="text" id="mov-form-cliente" placeholder="Ej: Techint, YPF, Pampa Energía...">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-map-marker-alt"></i> Obra / Destino / Ubicación</label>
+                    <input type="text" id="mov-form-ubicacion" placeholder="Ej: Planta Timbúes — Sector Obra...">
+                </div>
+
+                <!-- Fechas: Salida y Entrada -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label id="lbl-mov-fecha-salida"><i class="fas fa-calendar-minus"></i> Fecha de Salida *</label>
+                        <input type="date" id="mov-form-fecha-salida" required>
+                    </div>
+                    <div class="form-group">
+                        <label id="lbl-mov-fecha-entrada"><i class="fas fa-calendar-plus"></i> Fecha de Entrada (Reingreso)</label>
+                        <input type="date" id="mov-form-fecha-entrada" placeholder="Dejar vacío si aún está en obra">
+                        <small style="font-size: 10.5px; color: #94a3b8;">Completar si ya retornó a base</small>
+                    </div>
+                </div>
+
+                <!-- Traslado Adicional -->
+                <div style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <label style="font-weight: 700; color: #fbbf24;"><i class="fas fa-truck"></i> ¿Traslado Adicional?</label>
+                        <select id="mov-form-traslado" onchange="onMovimientoTrasladoChange(this.value)" style="border-color: rgba(243, 178, 41, 0.4);">
+                            <option value="no">No</option>
+                            <option value="si">Sí (Con servicio de traslado)</option>
+                        </select>
+                    </div>
+                    <div id="mov-form-traslado-detalle" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 11.5px; color: #38bdf8;">Costo Traslado ($)</label>
+                            <input type="number" id="mov-form-traslado-monto" placeholder="Ej: 85000" min="0">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 11.5px; color: #38bdf8;">Horas para cargar (hs)</label>
+                            <input type="number" id="mov-form-traslado-horas" placeholder="Ej: 4" min="0" step="0.5">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Observaciones / Chofer -->
+                <div class="form-group">
+                    <label><i class="fas fa-comment-dots"></i> Chofer / Remito / Observaciones</label>
+                    <textarea id="mov-form-obs" rows="2" placeholder="Datos del camión, chofer, remito o estado en que se entrega/recibe..." style="resize: vertical;"></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="font-weight: bold;">
+                        <i class="fas fa-save"></i> Guardar Movimiento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- ================= SISTEMA DE LLAMADAS EN VIVO (WEBRTC) ================= -->
     <!-- Modal: Llamada Entrante -->
     <div id="modal-incoming-call" class="modal-overlay" style="display: none; z-index: 9999999;">
@@ -1180,10 +1558,10 @@
 
     <!-- Elemento Audio para transmisión WebRTC (posicionado fuera de pantalla sin display:none para permitir render de coreaudio en macOS Safari) -->
     <audio id="remote-call-audio" autoplay playsinline style="position: fixed; top: -100px; left: -100px; width: 1px; height: 1px; opacity: 0.001; pointer-events: none; z-index: -999;"></audio>
-    <script src="contenedores_db.js?v=121"></script>
-    <script src="supabase_config.js?v=121"></script>
-    <script src="logo_base64.js?v=121"></script>
-    <script src="remitos_generator.js?v=121"></script>
-    <script src="app.js?v=121"></script>
+    <script src="contenedores_db.js?v=205"></script>
+    <script src="supabase_config.js?v=205"></script>
+    <script src="logo_base64.js?v=205"></script>
+    <script src="remitos_generator.js?v=205"></script>
+    <script src="app.js?v=205"></script>
 </body>
 </html>
