@@ -103,11 +103,15 @@ body {
 .nav-bar {
     background: rgba(15, 23, 42, 0.92);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 4px 16px;
+    padding: 6px 12px;
     display: flex;
     align-items: center;
     gap: 6px;
-    flex-wrap: wrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
 }
 
 .nav-tab-btn {
@@ -123,6 +127,8 @@ body {
     border: 1px solid transparent;
     cursor: pointer;
     transition: var(--transition);
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .nav-tab-btn:hover {
@@ -1627,6 +1633,257 @@ input:focus, select:focus, textarea:focus {
     border-color: var(--warning);
     color: var(--warning);
     font-weight: 700;
+}
+
+/* =========================================================
+   OPTIMIZACIONES RESPONSIVAS PARA CELULARES Y TABLETS
+   (iPhone, Android, iPads)
+   ========================================================= */
+
+@media (max-width: 900px) {
+    /* Header compacto y ordenado en móviles */
+    .glass-header {
+        padding: 6px 10px !important;
+        gap: 6px !important;
+        flex-wrap: wrap !important;
+        min-height: auto !important;
+        justify-content: space-between !important;
+    }
+
+    .logo-block {
+        gap: 6px !important;
+    }
+
+    .logo-block img {
+        height: 24px !important;
+    }
+
+    .logo-text {
+        font-size: 13px !important;
+    }
+
+    .logo-text span:last-child {
+        display: none !important; /* Oculta texto largo en header para ahorrar espacio */
+    }
+
+    #header-stats-summary {
+        display: none !important;
+    }
+
+    #supabase-sync-text {
+        display: none !important;
+    }
+
+    #supabase-sync-badge {
+        padding: 4px 8px !important;
+        font-size: 10px !important;
+    }
+
+    #btn-open-torre span:not(#tower-pings-badge) {
+        display: none !important;
+    }
+
+    #btn-open-torre {
+        padding: 4px 8px !important;
+    }
+
+    #current-user-role-badge {
+        display: none !important;
+    }
+
+    #btn-header-excel {
+        display: none !important;
+    }
+
+    #current-user-display {
+        max-width: 70px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 11px !important;
+    }
+
+    /* Solapas de Navegación Fluidas con Scroll Horizontal */
+    .nav-bar {
+        padding: 6px 8px !important;
+        gap: 6px !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        white-space: nowrap !important;
+        flex-wrap: nowrap !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .nav-tab-btn {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        font-size: 11.5px !important;
+        padding: 6px 10px !important;
+    }
+
+    #btn-global-back {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+    }
+
+    /* Contenedor Principal */
+    .main-container {
+        padding: 10px 8px !important;
+    }
+
+    /* Hero Banner del Dashboard */
+    .dash-hero-banner {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+        padding: 12px 14px !important;
+    }
+
+    .dash-hero-title {
+        font-size: 15px !important;
+    }
+
+    .dash-hero-sub {
+        font-size: 11px !important;
+    }
+
+    .dash-quick-actions {
+        width: 100% !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+    }
+
+    .dash-quick-actions button {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 8px 10px !important;
+        font-size: 11.5px !important;
+    }
+
+    /* Grilla de KPIs en 2 columnas táctiles */
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+
+    .kpi-card {
+        padding: 8px 10px !important;
+    }
+
+    .kpi-label {
+        font-size: 10px !important;
+    }
+
+    .kpi-value {
+        font-size: 20px !important;
+    }
+
+    .kpi-sub {
+        font-size: 10px !important;
+    }
+
+    /* Toolbars y Barra de Búsqueda */
+    .toolbar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    .search-box {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .search-box input {
+        width: 100% !important;
+    }
+
+    .filter-chips-group,
+    .seguimiento-filters-bar {
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding-bottom: 4px !important;
+        width: 100% !important;
+    }
+
+    .chip-btn,
+    .chip-filtro-seguimiento {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+    }
+
+    /* Tablas con desplazamiento horizontal suave */
+    .table-responsive {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        border-radius: 8px !important;
+    }
+
+    .data-table {
+        min-width: 650px !important;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 7px 8px !important;
+        font-size: 11px !important;
+    }
+
+    /* Modales en Móviles (estilo bottom-sheet táctil) */
+    .modal-overlay {
+        padding: 8px !important;
+        align-items: flex-end !important;
+    }
+
+    .modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 90vh !important;
+        padding: 16px 14px 24px 14px !important;
+        border-radius: 16px 16px 0 0 !important;
+        margin: 0 !important;
+    }
+
+    .modal-large {
+        max-width: 100% !important;
+    }
+
+    /* Columnas dobles dentro de modales se apilan verticalmente en celular */
+    [style*="grid-template-columns: 1fr 1fr"],
+    [style*="grid-template-columns: 1fr 1fr 1fr"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    /* Pantalla de Login */
+    .login-card {
+        padding: 24px 16px !important;
+        max-width: 95vw !important;
+    }
+
+    #login-view {
+        padding: 12px !important;
+    }
+
+    /* Botones e Inputs Táctiles */
+    .btn {
+        min-height: 36px !important;
+        touch-action: manipulation !important;
+    }
+
+    input, select, textarea {
+        font-size: 13.5px !important;
+    }
+
+    /* Mapa de obras responsivo */
+    #mapa-container {
+        height: 340px !important;
+        min-height: 280px !important;
+    }
 }
 
 
